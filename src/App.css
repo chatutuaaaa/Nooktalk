@@ -1,0 +1,691 @@
+/* 布局：Bento 三栏（Flex 行 + 等高）—— 行高=最高一列，三列在交叉轴强制同高，左右底必对齐 */
+/* Grid 在部分环境下行高/子项 height:100% 易失效，改 Flex 更稳 */
+
+.bento {
+  --gap: 18px;
+  --side: clamp(250px, 24vw, 280px);
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: 100%;
+  max-width: 1190px;
+  margin: 0 auto;
+  padding: 22px 20px 40px;
+  gap: var(--gap);
+  box-sizing: border-box;
+}
+
+.col-left {
+  flex: 0 0 var(--side);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.col-center {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.col-right {
+  flex: 0 0 var(--side);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 基础玻璃卡片 */
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 左：用户与导航 */
+.profile-card {
+  padding: 18px 16px 12px;
+}
+
+.profile-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: linear-gradient(135deg, #bfe8cd, #dff3e6);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  box-shadow: 0 8px 18px rgba(60, 120, 90, 0.18);
+}
+
+.brand-line {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.brand-zh {
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.brand-en {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.nav-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #7a8a80;
+  margin: 2px 4px 8px;
+}
+
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: #3a4a40;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s, color 0.2s;
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  background: rgba(62, 207, 139, 0.08);
+}
+
+.nav-item.active {
+  background: #fff;
+  border-color: var(--line);
+  color: #1a2e22;
+  box-shadow: 0 4px 14px rgba(20, 60, 40, 0.06);
+}
+
+.nav-item svg {
+  flex-shrink: 0;
+  stroke-width: 2px;
+}
+
+/* 左下：天气（布局与 E:\\python\\forum 首页天气卡一致，配色略融主题） */
+.weather-card {
+  min-height: 128px;
+  padding: 14px 14px 16px;
+  box-sizing: border-box;
+}
+
+.weather-unavailable {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.weather-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8a9a91;
+}
+
+.weather-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.weather-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weather-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 14px;
+  color: #18855c;
+  letter-spacing: 0.01em;
+}
+
+.weather-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+}
+
+.weather-icon img {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.weather-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: rgba(30, 41, 59, 0.65);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.weather-pin-icon {
+  flex: 0 0 auto;
+  color: #6b7f74;
+  stroke: currentColor;
+}
+
+.weather-loc {
+  font-weight: 600;
+  color: rgba(30, 41, 59, 0.78);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.weather-time {
+  margin-left: auto;
+  color: rgba(30, 41, 59, 0.55);
+  font-size: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.weather-main {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+}
+
+.weather-temp {
+  display: flex;
+  align-items: baseline;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.weather-temp-value {
+  font-size: 2.75rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #1e6b4a;
+}
+
+.weather-temp-unit {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: rgba(30, 107, 74, 0.85);
+}
+
+.weather-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-end;
+  min-width: 88px;
+  text-align: right;
+}
+
+.weather-desc {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: rgba(30, 41, 59, 0.8);
+}
+
+.weather-kv {
+  display: inline-flex;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: rgba(30, 41, 59, 0.62);
+}
+
+.weather-k {
+  color: rgba(30, 41, 59, 0.52);
+}
+
+.weather-v {
+  font-weight: 700;
+  color: rgba(30, 41, 59, 0.75);
+}
+
+/* 中：上方拼贴 + 主问候区 */
+.polaroid-row {
+  padding: 18px 20px 20px;
+  min-height: 160px;
+}
+
+.polaroid-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 12px;
+  padding: 6px 0 4px;
+}
+
+.polaroid {
+  width: 88px;
+  background: #fff;
+  border-radius: 8px 8px 10px 10px;
+  padding: 7px 7px 18px;
+  box-shadow: 0 8px 20px rgba(0, 40, 20, 0.12);
+  transform: rotate(var(--r, -4deg));
+}
+
+.polaroid:nth-child(2) {
+  --r: 3deg;
+}
+.polaroid:nth-child(3) {
+  --r: -2deg;
+}
+.polaroid:nth-child(4) {
+  --r: 5deg;
+}
+
+.polaroid-blob {
+  height: 64px;
+  border-radius: 6px;
+  background: var(--p-bg, #d8f0e2);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.greeting-block {
+  padding: 20px 22px 20px;
+  min-height: 196px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.greeting-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  object-fit: cover;
+  display: block;
+  background: linear-gradient(180deg, #bfe8cd, #f0faf4);
+  box-shadow: 0 10px 28px rgba(40, 100, 70, 0.15);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  font-size: 42px;
+  line-height: 84px;
+  text-align: center;
+}
+
+.greeting-time {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.greeting-line {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.greeting-line strong {
+  color: #18724a;
+  font-weight: 700;
+}
+
+.social-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.social-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.social-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.14);
+}
+
+.bg-github {
+  background: #0f172a;
+}
+.bg-bili {
+  background: #fb7299;
+}
+.bg-xhs {
+  background: #e3242b;
+}
+
+/* Gmail 官方主色：白底 + 灰字；图标 M 为四色标识（#EA4335 / #FBBC04 / #34A853 / #4285F4） */
+.bg-mail {
+  background: #fff;
+  color: #202124;
+  border: 1px solid #dadce0;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.12);
+}
+
+.bg-mail:hover {
+  background: #f8f9fa;
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.18);
+}
+
+.social-pill span.icon-wrap {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+}
+
+.social-pill.bg-mail span.icon-wrap {
+  background: linear-gradient(135deg, #ea4335, #fbbc04, #34a853, #4285f4);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06) inset;
+}
+
+/* 中：底部推荐小卡 */
+.picks-card {
+  padding: 12px 14px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.picks-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #edf7f0;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 20px;
+}
+
+.picks-text strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.picks-text span {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* 右：时钟 + 日历 + 音乐 */
+.clock-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  min-height: 88px;
+  box-sizing: border-box;
+}
+
+.digital-time {
+  width: 100%;
+  text-align: center;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: #1a2e22;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.5);
+}
+
+.calendar-card {
+  padding: 14px 14px 12px;
+}
+
+.cal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cal-head-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cal-greg {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a2e22;
+}
+
+.cal-lunar-hint {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #6b7f74;
+}
+
+.cal-head-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 10px;
+  color: #9aaa9f;
+  margin-bottom: 4px;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 40px;
+  padding: 4px 0;
+  border-radius: 10px;
+  color: #4a5a50;
+  font-weight: 500;
+}
+
+.cal-solar {
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.cal-lunar-d {
+  font-size: 9px;
+  line-height: 1.1;
+  font-weight: 500;
+  color: #8a9a91;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.cal-day.muted {
+  color: transparent;
+  font-weight: 400;
+  user-select: none;
+}
+
+.cal-day.today {
+  background: var(--mint-500);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(62, 207, 139, 0.35);
+}
+
+.cal-day.today .cal-solar {
+  color: #fff;
+  font-weight: 700;
+}
+
+.cal-day.today .cal-lunar-d {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.music-card {
+  padding: 12px 14px 12px;
+  min-height: 72px;
+  box-sizing: border-box;
+}
+
+.track-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.track-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a3c33;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.play-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: #3ecf8b;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.play-circle:hover {
+  background: #f6fcf8;
+}
+
+.progress {
+  height: 5px;
+  border-radius: 999px;
+  background: #e0eee5;
+  overflow: hidden;
+}
+
+.progress-inner {
+  height: 100%;
+  width: 35%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3ecf8b, #8fe0b4);
+}
+
+/* 窄屏 */
+@media (max-width: 1040px) {
+  .bento {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+
+  .col-left,
+  .col-center,
+  .col-right {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .greeting-block {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .bento {
+    padding: 16px 12px 28px;
+  }
+
+  .digital-time {
+    font-size: 36px;
+  }
+}
