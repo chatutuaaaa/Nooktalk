@@ -1,0 +1,17 @@
+[Unit]
+Description=Nooktalk FastAPI (weather + local music)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/nooktalk
+Environment=PYTHONUNBUFFERED=1
+# 在 /var/www/nooktalk 放置 .env（含 AMAP_KEY，勿提交到 Git）
+ExecStart=/var/www/nooktalk/.venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 5055
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

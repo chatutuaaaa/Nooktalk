@@ -132,7 +132,41 @@ npm run dev
 2. 用浏览器或 `curl` 试 `http://127.0.0.1:5055/api/music/tracks`  
 
 **生产环境**  
-需自行部署前端静态资源，并将 `/api` 指到实际 API 服务；CORS 可通过环境变量 `CORS_ORIGINS` 在 `api/main.py` 中配置（默认较宽松，生产请收紧）。
+需自行部署前端静态资源，并将 `/api` 指到实际 API 服务；CORS 可通过环境变量 `CORS_ORIGINS` 在 `api/main.py` 中配置（默认较宽松，生产可收紧）。  
+下面「服务器部署」为推荐的一种方式（Nginx 静态 + 反代 API + systemd 跑 Uvicorn）。
+
+---
+
+## 服务器部署（Ubuntu / Debian）
+
+> **安全**：公网服务器请勿在聊天/工单里发 root 密码；用 SSH 公钥登录、禁用 root 密码。若已泄露密码，请立即在提供商控制台**修改密码**并启用密钥。
+
+1. 本机或跳板机用 SSH 登录（**交互输入密码**或使用密钥，勿把密码写进命令行）  
+   `ssh root@<服务器IP>`
+
+2. 在服务器上二选一拉代码并跑一键脚本：  
+   **方式 A（推荐，仓库已 public）**  
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/chatutuaaaa/Nooktalk/main/scripts/bootstrap-server.sh -o /tmp/nook-bootstrap.sh
+   bash /tmp/nook-bootstrap.sh
+   ```  
+   **方式 B**  
+   ```bash
+   apt-get update && apt-get install -y git
+   git clone https://github.com/chatutuaaaa/Nooktalk.git /var/www/nooktalk
+   bash /var/www/nooktalk/scripts/bootstrap-server.sh
+   ```
+
+3. 脚本会安装 `nginx`、通过 NodeSource 装 Node 20+、建 venv、拉依赖、`npm run build`、写 `systemd` 单元 `nooktalk-api`、配置 Nginx 站点。  
+   环境变量：首次会在 `/var/www/nooktalk/.env` 创建占位，请执行：  
+   `nano /var/www/nooktalk/.env` 填好 `AMAP_KEY`，再 `systemctl restart nooktalk-api`  
+   本地曲库：把音乐文件 scp 到 `/var/www/nooktalk/music/` 并 `chown -R www-data:www-data /var/www/nooktalk/music`（脚本已建目录）。
+
+4. 访问 `http://<服务器公网IP>/` ；`curl -sS http://127.0.0.1:5055/api/health` 在服务器上应返回 `ok`。
+
+- 可改环境变量 `APP_DIR`、`REPO_URL` 重跑或换目录。  
+- 静态资源目录：`/var/www/nooktalk/dist`；API 经 Nginx 走 `/api/`。  
+- 若 `bootstrap-server.sh` 尚未推送到 `main`，请用方式 B 或先 `git pull` 再执行仓库内脚本。
 
 ---
 
