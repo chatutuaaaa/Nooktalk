@@ -1,48 +1,56 @@
 # 隅言 / Nooktalk
 
-一个论坛首页原型项目：
+基于 React + Vite 的「探索」首页，以及日程日历、周天气、时间工具、本地音乐播放等子页；天气与本地曲库由 FastAPI 提供。
 
-- 前端：React + Vite
-- 后端（天气接口）：FastAPI
-- 日历：公历 + 农历（`lunar`）
-- 天气：高德地图 Web 服务 API（实时天气 + IP 定位）
+- **前端**：React + Vite
+- **后端**：FastAPI（天气 + 本地 `music/` 列目录与流式播放）
+- **日历**：公历 + 农历（`lunarUtil` 等）
+- **天气**：高德 Web 服务（实时天气、预报、IP 区划）
 
 ---
 
-## 目录结构
+## 目录结构（节选）
 
 ```txt
 Nooktalk/
-  api/                 # Python 天气 API
-    main.py
-    amap_weather.py
-  public/
-    weather/           # 天气图标资源
+  api/
+    main.py            # 路由：健康检查、天气、音乐
+    amap_weather.py      # 高德：IP 定位、实况、预报
+    music_routes.py     # 本地 music/ 列目录与按文件名流式传输
+  music/                # 本地音频目录（除 .gitkeep 外已 .gitignore）
+  public/weather/       # 天气 SVG 图标
   src/
-    App.jsx            # 主界面（含天气卡、农历日历）
-    App.css
-  requirements.txt     # Python 依赖
-  package.json         # Node 依赖
+    App.jsx / App.css   # 三栏 Bento、导航与子页出口
+    MusicPlayer.jsx     # 音乐子页
+    MusicPlaybackProvider.jsx
+    ScheduleCalendar.jsx
+    WeatherWeek.jsx
+    TimeTools.jsx
+    …
+  .env.example
+  requirements.txt
+  package.json
+  vite.config.js        # 开发时 /api 代理到 5055
 ```
 
 ---
 
 ## 环境要求
 
-- Node.js 18+（建议最新 LTS）
+- Node.js 18+（建议 LTS）
 - Python 3.10+
 
 ---
 
 ## 安装依赖
 
-### 1) 前端依赖
+**前端**
 
 ```bash
 npm install
 ```
 
-### 2) 后端依赖
+**后端**
 
 ```bash
 pip install -r requirements.txt
@@ -52,92 +60,82 @@ pip install -r requirements.txt
 
 ## 环境变量
 
-在项目根目录创建 `.env`（仓库已忽略该文件）：
+在**项目根目录**创建 `.env`（已被 Git 忽略，勿提交）：
 
 ```env
 AMAP_KEY=你的高德Web服务Key
-# 可选：默认行政区 adcode（本地/内网 IP 场景会用到）
+# 可选：非公网/本地回环时默认行政区
 # AMAP_DEFAULT_ADCODE=110000
 ```
 
-可参考 `.env.example`。
+以 `.env.example` 为模板。不要把真实 Key 推送到仓库；泄露后在 [高德控制台](https://console.amap.com/) 重置 Key。
 
 ---
 
 ## 启动项目
 
-需要分别启动后端和前端（两个终端）。
+需**两个终端**分别跑后端与前端。
 
-### 终端 A：启动天气 API
+**终端 A — API（天气 + 音乐）**
 
 ```bash
 python -m uvicorn api.main:app --host 127.0.0.1 --port 5055
 ```
 
-健康检查：
+- 健康检查：`GET /api/health`
+- 天气：`GET /api/weather`、`GET /api/weather/forecast`
+- 曲库列表：`GET /api/music/tracks`（扫描项目根下 `music/` 中的音频）
+- 播放流：`GET /api/music/stream/<filename>`（仅允许已登记扩展名，且防止路径穿越）
 
-```bash
-curl http://127.0.0.1:5055/api/health
-```
-
-### 终端 B：启动前端
+**终端 B — 前端**
 
 ```bash
 npm run dev
 ```
 
-浏览器打开 Vite 输出地址（通常 `http://localhost:5173`）。
+浏览器打开终端里提示的地址（一般为 `http://localhost:5173`）。  
+开发时 Vite 将 **`/api` 代理到** `http://127.0.0.1:5055`，故前端能直接请求天气与音乐接口。
 
-> 开发环境中，Vite 已配置 `/api` 代理到 `http://127.0.0.1:5055`。
+**本地音乐**：把 `mp3`、`flac`、`ogg` 等文件放入根目录的 **`music/`** 后刷新音乐页与首页小卡；该目录下除 `music/.gitkeep` 外其余文件**不会**被 Git 跟踪。
 
 ---
 
 ## 主要功能
 
-- 三栏 Bento 风格首页布局
-- 右栏数字时钟
-- 日历显示公历 + 农历日
-- 左下天气卡（位置、天气、温度、湿度）
-- 社交链接卡片（GitHub / 哔哩哔哩 / 小红书 / Gmail）
+- 三栏 Bento：侧栏（导航 + 天气小卡）/ 主内容 / 右侧（主界面含时钟、月历、音乐小卡等）
+- **日程与日历**（月/年）：本地日程存储、农历提示、子页与左栏底对齐等布局
+- **未来天气**子页、**时间工具**子页
+- **音乐**：从 `music/` 经 API 拉取列表、HTML5 音频播放、首页与音乐页**共享**播放状态
+
+---
+
+## 脚本
+
+| 命令            | 说明         |
+| --------------- | ------------ |
+| `npm run dev`   | 开发 + HMR   |
+| `npm run build` | 生产构建     |
+| `npm run preview` | 预览构建结果 |
+| `npm run lint`  | ESLint       |
 
 ---
 
 ## 常见问题
 
-### 1) 天气显示“暂不可用”
+**天气「暂不可用」**  
+1. 后端已启动且 `GET /api/health` 正常  
+2. `.env` 中 `AMAP_KEY` 有效、高德已开通** Web 服务**  
+3. 用 `npm run dev` 打开页面，且未改掉 `vite.config.js` 里对 `/api` 的代理  
 
-请检查：
+**曲库始终为空**  
+1. 已运行 uvicorn，且 `music/` 在**仓库根目录**、内有支持的音频扩展名  
+2. 用浏览器或 `curl` 试 `http://127.0.0.1:5055/api/music/tracks`  
 
-1. 后端是否已启动（`/api/health` 返回 `{"status":"ok"}`）
-2. `.env` 是否配置了有效 `AMAP_KEY`
-3. 当前网络是否可访问高德接口
-
-### 2) 本地开发时看不到天气请求
-
-确认你是通过 `npm run dev` 打开的前端页面，并且 `vite.config.js` 里的 `/api` 代理未被修改。
+**生产环境**  
+需自行部署前端静态资源，并将 `/api` 指到实际 API 服务；CORS 可通过环境变量 `CORS_ORIGINS` 在 `api/main.py` 中配置（默认较宽松，生产请收紧）。
 
 ---
 
-## 安全提示
+## 技术栈备注
 
-- 不要把真实 `AMAP_KEY` 提交到 Git 仓库。
-- 若 Key 已泄露，请在高德控制台立即重置。
-
-## React + Vite 模板说明
-
-该模板提供了一个最小可用配置，让 React 在 Vite 中运行，并内置 HMR（热更新）与基础 ESLint 规则。
-
-当前可用的两个官方插件：
-
-- `[@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react)`：基于 [Oxc](https://oxc.rs)
-- `[@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc)`：基于 [SWC](https://swc.rs/)
-
-### React Compiler
-
-该模板默认未启用 React Compiler，因为它会对开发与构建性能产生一定影响。  
-如需启用，请参考[官方文档](https://react.dev/learn/react-compiler/installation)。
-
-### 扩展 ESLint 配置
-
-如果你要开发生产级应用，建议使用 TypeScript 并启用带类型信息的 lint 规则。  
-可参考 [TS 模板](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) 了解如何集成 TypeScript 与 `[typescript-eslint](https://typescript-eslint.io)`。
+- 模板级说明（React 插件、React Compiler、TS + ESLint 扩展）可参见 [Vite 官方 create-react 文档](https://vitejs.dev/)；当前仓库为 JS + 既有 ESLint 配置，按需再接入 TypeScript 即可。
