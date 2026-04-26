@@ -1,0 +1,307 @@
+.mplayer-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap, 18px);
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.mplayer-hero {
+  padding: 20px 22px 16px;
+  flex-shrink: 0;
+}
+
+.mplayer-hero-zh {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #1a2e22;
+}
+
+.mplayer-hero-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted, #5d6a62);
+  line-height: 1.45;
+}
+
+.mplayer-hero-sub code {
+  font-size: 0.9em;
+  font-weight: 600;
+  padding: 0 0.2em;
+  color: #2a5c3f;
+  background: rgba(62, 207, 139, 0.1);
+  border-radius: 4px;
+}
+
+.mplayer-hint {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted, #5d6a62);
+}
+
+.mplayer-hint code {
+  font-size: 0.9em;
+  font-weight: 600;
+  padding: 0 0.2em;
+  color: #2a5c3f;
+  background: rgba(62, 207, 139, 0.1);
+  border-radius: 4px;
+}
+
+/* 主卡两栏：左为封面/控制，右为列表；整卡随中间栏拉高、底与左栏齐 */
+.mplayer-now {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 12px 10px 14px;
+  text-align: left;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.mplayer-now-body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: row;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 0;
+  gap: 0 18px;
+  box-sizing: border-box;
+}
+
+/* 左 : 右 ≈ 6 : 4（播放区 60%，列表 40%） */
+.mplayer-now-upper {
+  display: flex;
+  flex-direction: column;
+  flex: 6 1 0;
+  min-width: 0;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-sizing: border-box;
+  padding: 2px 4px 0 0;
+}
+
+.mplayer-now-list-area {
+  flex: 4 1 0;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border-left: 1px solid var(--line, rgba(32, 56, 44, 0.1));
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+}
+
+.mplayer-art {
+  width: min(148px, 42vw);
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #c8f0d8, #e8faf0);
+  box-shadow: 0 8px 24px rgba(20, 60, 40, 0.1);
+  margin-bottom: 0.7rem;
+  flex-shrink: 0;
+}
+
+.mplayer-track {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1a2e22;
+}
+
+.mplayer-artist {
+  margin: 0 0 0.85rem;
+  font-size: 14px;
+  color: #5d6a62;
+}
+
+.mplayer-transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.mplayer-transport .music-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(62, 207, 139, 0.12);
+  color: #2a8f5c;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.mplayer-transport .music-ctrl-btn:hover {
+  background: rgba(62, 207, 139, 0.22);
+  color: #1a6b44;
+}
+
+.mplayer-transport .music-ctrl-btn--main {
+  width: 56px;
+  height: 56px;
+  background: #fff;
+  color: #3ecf8b;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.mplayer-transport .music-ctrl-btn--main:hover {
+  background: #f6fcf8;
+}
+
+.mplayer-transport .music-ctrl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.mplayer-scrub {
+  width: 100%;
+  max-width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e0eee5;
+  margin-bottom: 0.35rem;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.mplayer-scrub:focus {
+  outline: 2px solid rgba(62, 207, 139, 0.45);
+  outline-offset: 2px;
+}
+
+.mplayer-scrub-inner {
+  height: 100%;
+  width: 0%;
+  min-width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3ecf8b, #8fe0b4);
+  pointer-events: none;
+}
+
+.mplayer-time-row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 100%;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #6b7f74;
+  margin-bottom: 0;
+}
+
+.mplayer-list-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 6px;
+  padding: 4px 4px 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #6b7f74;
+  border-bottom: 1px solid var(--line, rgba(32, 56, 44, 0.08));
+  background: var(--card, rgba(255, 255, 255, 0.75));
+  backdrop-filter: blur(4px);
+}
+
+.mplayer-list-title-icon {
+  display: inline;
+  vertical-align: -0.1em;
+  margin-right: 2px;
+}
+
+.mplayer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mplayer-list li {
+  list-style: none;
+}
+
+.mplayer-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 10px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  color: #2a3c33;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+  box-sizing: border-box;
+}
+
+.mplayer-list-item:hover {
+  background: rgba(62, 207, 139, 0.06);
+}
+
+.mplayer-list-item--active {
+  background: rgba(62, 207, 139, 0.1);
+  font-weight: 600;
+  color: #1a2e22;
+}
+
+.mplayer-list-meta {
+  font-size: 12px;
+  color: #8a9a91;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .mplayer-now-body {
+    flex-direction: column;
+  }
+
+  .mplayer-now-upper {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 0 0 4px;
+  }
+
+  .mplayer-now-list-area {
+    padding: 8px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--line, rgba(32, 56, 44, 0.1));
+    flex: 1 1 0;
+    min-height: 120px;
+  }
+}

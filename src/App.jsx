@@ -1,25 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
+  CalendarDays,
   Clock3,
   FileText,
   Link2,
   ListOrdered,
   MapPin,
+  Pause,
   Play,
+  SkipBack,
+  SkipForward,
   Sparkles,
 } from "lucide-react";
-import { formatLunarParts, toLunar } from "lunar";
+import { getLunarDayLabel, getLunarMonthTitle } from "./lunarUtil";
+import { ScheduleCalendar } from "./ScheduleCalendar";
+import { MusicPlayer } from "./MusicPlayer";
+import { useMusicPlayback } from "./useMusicPlayback.js";
+import { TimeTools } from "./TimeTools";
+import { WeatherWeek } from "./WeatherWeek";
 import "./App.css";
 
-const LUNAR_TZ = { timezone: "Asia/Shanghai" };
-
 const NAV = [
-  { id: "recent", label: "最新讨论", icon: ListOrdered, active: false },
-  { id: "explore", label: "探索", icon: Sparkles, active: true },
-  { id: "about", label: "关于隅言", icon: BookOpen, active: false },
-  { id: "share", label: "推荐分享", icon: Link2, active: false },
-  { id: "columns", label: "精品专栏", icon: FileText, active: false },
+  { id: "home", label: "探索", icon: Sparkles },
+  { id: "schedule", label: "日程日历", icon: CalendarDays },
+  { id: "recent", label: "最新讨论", icon: ListOrdered },
+  { id: "about", label: "关于隅言", icon: BookOpen },
+  { id: "share", label: "推荐分享", icon: Link2 },
+  { id: "columns", label: "精品专栏", icon: FileText },
 ];
 
 const POLAROIDS = [
@@ -28,6 +36,36 @@ const POLAROIDS = [
   { bg: "linear-gradient(145deg, #d8e4ff, #f0f4ff)" },
   { bg: "linear-gradient(145deg, #e8d8f8, #f5f0ff)" },
 ];
+
+/** 与 Vite `base` 一致，供 History API 与后退/前进同步 */
+function homePathname() {
+  return new URL(import.meta.env.BASE_URL, window.location.origin).pathname;
+}
+
+function schedulePathname() {
+  return new URL("schedule", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function weatherPathname() {
+  return new URL("weather", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function timePathname() {
+  return new URL("time", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function musicPathname() {
+  return new URL("music", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function viewFromPathname() {
+  const p = window.location.pathname;
+  if (p === schedulePathname()) return "schedule";
+  if (p === weatherPathname()) return "weather";
+  if (p === timePathname()) return "time";
+  if (p === musicPathname()) return "music";
+  return "home";
+}
 
 function useNow() {
   const [d, setD] = useState(() => new Date());
@@ -45,38 +83,6 @@ function getGreeting(hour) {
   if (hour < 18) return { label: "下午好" };
   if (hour < 23) return { label: "晚上好" };
   return { label: "晚安" };
-}
-
-/** 该公历日对应的农历日文案，如「初一」「廿三」 */
-function getLunarDayLabel(gregorianYear, monthIndex0, day) {
-  try {
-    const { lunar } = toLunar(
-      { year: gregorianYear, month: monthIndex0 + 1, day },
-      LUNAR_TZ,
-    );
-    const parts = formatLunarParts(lunar, { prefix: false, stemBranch: false });
-    const d = parts.find((p) => p.type === "day");
-    return d?.value ?? "";
-  } catch {
-    return "";
-  }
-}
-
-/** 标题副行：以月中为参考的农历年、月（公历月跨多农历月时作示意） */
-function getLunarMonthTitle(gregorianYear, monthIndex0) {
-  try {
-    const { lunar } = toLunar(
-      { year: gregorianYear, month: monthIndex0 + 1, day: 15 },
-      LUNAR_TZ,
-    );
-    const parts = formatLunarParts(lunar, { prefix: "农历" });
-    return parts
-      .filter((p) => p.type !== "day")
-      .map((p) => p.value)
-      .join("");
-  } catch {
-    return "";
-  }
 }
 
 function buildCalendar(d) {
@@ -99,7 +105,7 @@ function buildCalendar(d) {
   return { year, month, cells, monthLabel: month + 1 };
 }
 
-function WeatherWidget() {
+function WeatherWidget({ onOpenForecast }) {
   const [loading, setLoading] = useState(true);
   const [payload, setPayload] = useState(null);
 
@@ -139,7 +145,16 @@ function WeatherWidget() {
     return (
       <div className="card weather-card">
         <p className="weather-unavailable">天气数据暂不可用</p>
-        <p className="weather-hint">配置高德 AMAP_KEY 并运行天气接口后可显示实时数据。</p>
+        <p className="weather-hint">
+          {payload.error === "no_key"
+            ? "未从项目根 .env 读到 AMAP_KEY；保存 .env 后请重启后端的 uvicorn 进程再试（UTF-8 建议无 BOM，可用一行：AMAP_KEY=你的key）。"
+            : "请确认本机已运行 `python -m uvicorn api.main:app --port 5055`、并在高德控制台为该 Key 开通「Web 服务」。"}
+        </p>
+        {payload.amapInfo ? (
+          <p className="weather-hint" title="高德 API 说明">
+            接口返回：{String(payload.amapInfo)}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -148,7 +163,12 @@ function WeatherWidget() {
   const loc = payload.weatherLocation || w.city;
   const wdate = payload.weatherDate || w.reporttime;
   return (
-    <div className="card weather-card">
+    <button
+      type="button"
+      className="card weather-card weather-card--go"
+      onClick={onOpenForecast}
+      aria-label="打开未来天气，查看逐日预报"
+    >
       <div className="weather-widget">
         <div className="weather-top">
           <div className="weather-title">
@@ -181,11 +201,71 @@ function WeatherWidget() {
           </div>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
 function App() {
+  const {
+    hasTracks,
+    cur,
+    listLoading: musicListLoading,
+    listError: musicListError,
+    playing: musicPlaying,
+    currentTime: musicTime,
+    duration: musicDuration,
+    progress: musicProgress,
+    formatTime: formatMusicTime,
+    togglePlay: musicToggle,
+    goPrev: musicPrev,
+    goNext: musicNext,
+    seekFromBarEvent: musicSeekFromBar,
+    nudgeBySeconds: musicNudge,
+  } = useMusicPlayback();
+  const [activePage, setActivePage] = useState(() =>
+    typeof window !== "undefined" ? viewFromPathname() : "home",
+  );
+
+  const goToPage = useCallback((page) => {
+    if (page === "home") {
+      if (activePage === "home") return;
+      history.pushState({ view: "home" }, "", homePathname());
+      setActivePage("home");
+      return;
+    }
+    if (page === "schedule") {
+      if (activePage === "schedule") return;
+      history.pushState({ view: "schedule" }, "", schedulePathname());
+      setActivePage("schedule");
+      return;
+    }
+    if (page === "weather") {
+      if (activePage === "weather") return;
+      history.pushState({ view: "weather" }, "", weatherPathname());
+      setActivePage("weather");
+      return;
+    }
+    if (page === "time") {
+      if (activePage === "time") return;
+      history.pushState({ view: "time" }, "", timePathname());
+      setActivePage("time");
+      return;
+    }
+    if (page === "music") {
+      if (activePage === "music") return;
+      history.pushState({ view: "music" }, "", musicPathname());
+      setActivePage("music");
+    }
+  }, [activePage]);
+
+  useEffect(() => {
+    const onPop = () => {
+      setActivePage(viewFromPathname());
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const now = useNow();
   const { label: greetLabel } = getGreeting(now.getHours());
   const timeText = useMemo(
@@ -207,6 +287,24 @@ function App() {
   );
   const weekday = now.toLocaleDateString("zh-CN", { weekday: "long" });
 
+  const onMusicCardSurfaceClick = (e) => {
+    if (e.target.closest("button, .music-card-progress, .music-card-time")) {
+      return;
+    }
+    goToPage("music");
+  };
+
+  const homeMusicTitle = musicListLoading
+    ? "正在加载曲库…"
+    : musicListError
+      ? "曲库暂不可用"
+      : !hasTracks
+        ? "未检测到本地曲目"
+        : (cur?.title ?? "—");
+  const homeMusicFilename = hasTracks && cur?.filename ? cur.filename : null;
+  const canShowMusicProgress =
+    hasTracks && Number.isFinite(musicDuration) && musicDuration > 0;
+
   return (
     <div className="bento" lang="zh-CN">
       <aside className="col-left">
@@ -224,12 +322,28 @@ function App() {
           <ul className="nav-list" role="navigation" aria-label="主菜单">
             {NAV.map((item) => {
               const Icon = item.icon;
+              const href =
+                item.id === "home"
+                  ? homePathname() || "/"
+                  : item.id === "schedule"
+                    ? schedulePathname()
+                    : "#";
               return (
                 <li key={item.id}>
                   <a
-                    className={"nav-item" + (item.active ? " active" : "")}
-                    href="#"
-                    onClick={(e) => e.preventDefault()}
+                    className={
+                      "nav-item" + (item.id === activePage ? " active" : "")
+                    }
+                    href={href}
+                    onClick={(e) => {
+                      if (item.id === "home" || item.id === "schedule") {
+                        e.preventDefault();
+                        goToPage(item.id);
+                      } else {
+                        e.preventDefault();
+                      }
+                    }}
+                    aria-current={item.id === activePage ? "page" : undefined}
                   >
                     <Icon size={18} />
                     {item.label}
@@ -240,148 +354,266 @@ function App() {
           </ul>
         </div>
 
-        <WeatherWidget />
+        <WeatherWidget onOpenForecast={() => goToPage("weather")} />
       </aside>
 
-      <div className="col-center">
-        <div className="card polaroid-row">
-          <div className="polaroid-inner" aria-label="欢迎拼贴图">
-            {POLAROIDS.map((p, i) => (
-              <div key={i} className="polaroid">
-                <div
-                  className="polaroid-blob"
-                  style={{ background: p.bg }}
-                />
+      {activePage === "schedule" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--schedule">
+          <ScheduleCalendar />
+        </div>
+      ) : activePage === "weather" ? (
+        <div className="col-center col-center--fill col-center--weather">
+          <WeatherWeek />
+        </div>
+      ) : activePage === "time" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--time">
+          <TimeTools />
+        </div>
+      ) : activePage === "music" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--music">
+          <MusicPlayer />
+        </div>
+      ) : (
+        <>
+          <div className="col-center">
+            <div className="card polaroid-row">
+              <div className="polaroid-inner" aria-label="欢迎拼贴图">
+                {POLAROIDS.map((p, i) => (
+                  <div key={i} className="polaroid">
+                    <div
+                      className="polaroid-blob"
+                      style={{ background: p.bg }}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card greeting-block">
-          <div className="greeting-avatar" aria-hidden>
-            🪴
-          </div>
-          <p className="greeting-time">
-            {greetLabel} · {weekday}
-          </p>
-          <p className="greeting-line">
-            我是 <strong>隅友</strong>，很高兴在 Nooktalk 遇见你。
-          </p>
-          <div className="social-row" aria-label="外站官方链接">
-            <a
-              className="social-pill bg-github"
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="icon-wrap">
-                <span style={{ fontSize: 11, fontWeight: 800 }}>G</span>
-              </span>
-              GitHub
-            </a>
-            <a
-              className="social-pill bg-bili"
-              href="https://www.bilibili.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="icon-wrap">
-                <span style={{ fontSize: 10, fontWeight: 800 }}>b</span>
-              </span>
-              哔哩哔哩
-            </a>
-            <a
-              className="social-pill bg-xhs"
-              href="https://www.xiaohongshu.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="icon-wrap">
-                <span style={{ fontSize: 9, fontWeight: 800 }}>红</span>
-              </span>
-              小红书
-            </a>
-            <a
-              className="social-pill bg-mail"
-              href="https://mail.google.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="icon-wrap">
-                <span style={{ fontSize: 10, fontWeight: 800 }}>M</span>
-              </span>
-              Gmail
-            </a>
-          </div>
-        </div>
-
-        <div className="card picks-card">
-          <div className="picks-icon" aria-hidden>
-            ✨
-          </div>
-          <div className="picks-text">
-            <strong>今日小推荐</strong>
-            <span>在论坛里，把长帖拆成「章节回复」，读感会更像一篇温柔的连载。</span>
-          </div>
-        </div>
-      </div>
-
-      <aside className="col-right">
-        <div className="card clock-card" aria-live="polite">
-          <div className="digital-time">{timeText}</div>
-        </div>
-
-        <div className="card calendar-card">
-          <div className="cal-head">
-            <div className="cal-head-titles">
-              <span className="cal-greg">
-                {year} 年 {monthLabel} 月
-              </span>
-              {lunarMonthTitle ? (
-                <span className="cal-lunar-hint" title="以月中为参考的农历年、月">
-                  {lunarMonthTitle}
-                </span>
-              ) : null}
             </div>
-            <Clock3 size={16} color="#6b7f74" className="cal-head-icon" />
-          </div>
-          <div className="cal-week" aria-hidden>
-            {["日", "一", "二", "三", "四", "五", "六"].map((d) => (
-              <div key={d}>{d}</div>
-            ))}
-          </div>
-          <div className="cal-grid" role="grid" aria-label="月历">
-            {cells.map((c, i) => {
-              if (c.type === "pad")
-                return <div key={`p-${i}`} className="cal-day muted" />;
-              return (
-                <div
-                  key={c.day}
-                  className={"cal-day" + (c.isToday ? " today" : "")}
-                  role="gridcell"
+
+            <div className="card greeting-block">
+              <div className="greeting-avatar" aria-hidden>
+                🪴
+              </div>
+              <p className="greeting-time">
+                {greetLabel} · {weekday}
+              </p>
+              <p className="greeting-line">
+                我是 <strong>隅友</strong>，很高兴在 Nooktalk 遇见你。
+              </p>
+              <div className="social-row" aria-label="外站官方链接">
+                <a
+                  className="social-pill bg-github"
+                  href="https://github.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  <span className="cal-solar">{c.day}</span>
-                  {c.lunarDay ? (
-                    <span className="cal-lunar-d">{c.lunarDay}</span>
+                  <span className="icon-wrap">
+                    <span style={{ fontSize: 11, fontWeight: 800 }}>G</span>
+                  </span>
+                  GitHub
+                </a>
+                <a
+                  className="social-pill bg-bili"
+                  href="https://www.bilibili.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="icon-wrap">
+                    <span style={{ fontSize: 10, fontWeight: 800 }}>b</span>
+                  </span>
+                  哔哩哔哩
+                </a>
+                <a
+                  className="social-pill bg-xhs"
+                  href="https://www.xiaohongshu.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="icon-wrap">
+                    <span style={{ fontSize: 9, fontWeight: 800 }}>红</span>
+                  </span>
+                  小红书
+                </a>
+                <a
+                  className="social-pill bg-mail"
+                  href="https://mail.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span className="icon-wrap">
+                    <span style={{ fontSize: 10, fontWeight: 800 }}>M</span>
+                  </span>
+                  Gmail
+                </a>
+              </div>
+            </div>
+
+            <div className="card picks-card">
+              <div className="picks-icon" aria-hidden>
+                ✨
+              </div>
+              <div className="picks-text">
+                <strong>今日小推荐</strong>
+                <span>
+                  在论坛里，把长帖拆成「章节回复」，读感会更像一篇温柔的连载。
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <aside className="col-right">
+            <button
+              type="button"
+              className="card clock-card clock-card--go"
+              onClick={() => goToPage("time")}
+              aria-label="打开时间工具：秒表、倒计时与当前时间"
+            >
+              <div className="digital-time" aria-live="polite">
+                {timeText}
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className="card calendar-card calendar-card--go"
+              onClick={() => goToPage("schedule")}
+              aria-label="打开日程与日历，管理月历与待办"
+            >
+              <div className="cal-head">
+                <div className="cal-head-titles">
+                  <span className="cal-greg">
+                    {year} 年 {monthLabel} 月
+                  </span>
+                  {lunarMonthTitle ? (
+                    <span
+                      className="cal-lunar-hint"
+                      title="以月中为参考的农历年、月"
+                    >
+                      {lunarMonthTitle}
+                    </span>
                   ) : null}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="card music-card">
-          <div className="track-row">
-            <p className="track-name">Close To You — Carpenters</p>
-            <button className="play-circle" type="button" aria-label="播放（示意）">
-              <Play size={18} fill="currentColor" className="play-icon" />
+                <Clock3 size={16} color="#6b7f74" className="cal-head-icon" />
+              </div>
+              <div className="cal-week" aria-hidden>
+                {["日", "一", "二", "三", "四", "五", "六"].map((d) => (
+                  <div key={d}>{d}</div>
+                ))}
+              </div>
+              <div
+                className="cal-grid"
+                role="grid"
+                aria-label="月历，点击整卡可进入完整日程"
+              >
+                {cells.map((c, i) => {
+                  if (c.type === "pad")
+                    return <div key={`p-${i}`} className="cal-day muted" />;
+                  return (
+                    <div
+                      key={c.day}
+                      className={"cal-day" + (c.isToday ? " today" : "")}
+                      role="gridcell"
+                    >
+                      <span className="cal-solar">{c.day}</span>
+                      {c.lunarDay ? (
+                        <span className="cal-lunar-d">{c.lunarDay}</span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </button>
-          </div>
-          <div className="progress" aria-hidden>
-            <div className="progress-inner" />
-          </div>
-        </div>
-      </aside>
+
+            <div
+              className="card music-card music-card--go"
+              onClick={onMusicCardSurfaceClick}
+            >
+              <div
+                className="music-card-titles"
+                title={
+                  [homeMusicTitle, homeMusicFilename].filter(Boolean).join(" · ") || undefined
+                }
+              >
+                <p className="track-name track-name--full">{homeMusicTitle}</p>
+                {homeMusicFilename ? (
+                  <p className="track-filename" aria-label={`文件名：${homeMusicFilename}`}>
+                    {homeMusicFilename}
+                  </p>
+                ) : null}
+              </div>
+              <div
+                className="music-controls"
+                role="group"
+                aria-label="播放控制"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  className="music-ctrl-btn"
+                  aria-label="上一曲"
+                  disabled={!hasTracks}
+                  onClick={musicPrev}
+                >
+                  <SkipBack size={18} strokeWidth={2.2} className="music-ctrl-icon" />
+                </button>
+                <button
+                  type="button"
+                  className="music-ctrl-btn music-ctrl-btn--main"
+                  onClick={musicToggle}
+                  aria-label={musicPlaying ? "暂停" : "播放"}
+                  aria-pressed={musicPlaying}
+                  disabled={!hasTracks}
+                >
+                  {musicPlaying ? (
+                    <Pause size={20} strokeWidth={2.4} fill="currentColor" className="music-ctrl-icon" />
+                  ) : (
+                    <Play size={20} strokeWidth={2.2} fill="currentColor" className="music-ctrl-icon" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="music-ctrl-btn"
+                  aria-label="下一曲"
+                  disabled={!hasTracks}
+                  onClick={musicNext}
+                >
+                  <SkipForward size={18} strokeWidth={2.2} className="music-ctrl-icon" />
+                </button>
+              </div>
+              <div
+                className={
+                  "progress music-card-progress" + (canShowMusicProgress ? "" : " is-disabled")
+                }
+                role="slider"
+                tabIndex={canShowMusicProgress ? 0 : -1}
+                aria-label="播放进度"
+                aria-valuemin={0}
+                aria-valuemax={Math.round(musicDuration) || 0}
+                aria-valuenow={Math.floor(musicTime)}
+                aria-disabled={!canShowMusicProgress}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (e.currentTarget) musicSeekFromBar(e, e.currentTarget);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                  e.stopPropagation();
+                  e.preventDefault();
+                  musicNudge(e.key === "ArrowLeft" ? -5 : 5);
+                }}
+              >
+                <div
+                  className="progress-inner"
+                  style={{ width: `${(canShowMusicProgress ? musicProgress : 0) * 100}%` }}
+                />
+              </div>
+              <div className="music-card-time" aria-label="已播放与总时长">
+                <span>{formatMusicTime(musicTime)}</span>
+                <span>{formatMusicTime(musicDuration)}</span>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }

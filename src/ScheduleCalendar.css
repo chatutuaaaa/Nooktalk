@@ -1,0 +1,690 @@
+.sched-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap, 18px);
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  align-self: stretch;
+}
+
+.sched-hero {
+  flex-shrink: 0;
+  padding: 20px 22px 16px;
+}
+
+.sched-hero-zh {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #1a2e22;
+}
+
+.sched-hero-sub {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--muted, #5d6a62);
+  line-height: 1.45;
+}
+
+.sched-mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sched-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(32, 56, 44, 0.08));
+  background: rgba(255, 255, 255, 0.6);
+  color: #3a4a40;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.sched-mode:hover {
+  background: rgba(62, 207, 139, 0.08);
+}
+
+.sched-mode.active {
+  background: #fff;
+  border-color: var(--line, rgba(32, 56, 44, 0.08));
+  color: #1a2e22;
+  box-shadow: 0 3px 12px rgba(20, 60, 40, 0.08);
+}
+
+.sched-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line, rgba(32, 56, 44, 0.08));
+  padding-top: 12px;
+}
+
+.sched-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.sched-date-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.sched-greg {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1a2e22;
+  letter-spacing: 0.01em;
+}
+
+.sched-lunar-hint {
+  font-size: 12px;
+  color: #6b7f74;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.sched-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.sched-icon-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #3a4a40;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.sched-icon-btn:hover {
+  background: #fff;
+}
+
+.sched-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line, rgba(32, 56, 44, 0.1));
+  background: rgba(255, 255, 255, 0.75);
+  color: #2a3c33;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.sched-pill:hover {
+  background: #fff;
+}
+
+.sched-pill--primary {
+  background: #fff;
+  border-color: rgba(62, 207, 139, 0.45);
+  color: #18724a;
+  box-shadow: 0 2px 10px rgba(62, 207, 139, 0.15);
+}
+
+.sched-pill--block {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.sched-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap, 18px);
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+/* 仅月视图：月历 + 右侧两卡 */
+.sched-body--with-side {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.sched-body--with-side .sched-month-card {
+  flex: 1 1 400px;
+  min-width: 0;
+}
+
+.sched-month-card {
+  width: 100%;
+  min-width: 0;
+  padding: 16px 14px 16px;
+  box-sizing: border-box;
+}
+
+/* 年视图：4 列 × 3 行（1–4 月第一行，…） */
+/* 上/下内边距一致；卡片被拉高时多出的高度在首行上、末行下均分 */
+.sched-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto);
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  padding: 16px 14px;
+  box-sizing: border-box;
+  align-content: center;
+}
+
+.sched-year-cell {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line, rgba(32, 56, 44, 0.08));
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  font: inherit;
+}
+
+.sched-year-cell:hover {
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(20, 60, 40, 0.08);
+  transform: translateY(-1px);
+}
+
+.sched-year-m {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1a2e22;
+}
+
+.sched-year-c {
+  font-size: 12px;
+  color: #18724a;
+  font-weight: 600;
+}
+
+.sched-year-c.muted {
+  color: #9aaa9f;
+  font-weight: 500;
+}
+
+.sched-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 10px;
+  color: #9aaa9f;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.sched-weekday {
+  font-weight: 600;
+}
+
+.sched-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  text-align: center;
+  width: 100%;
+}
+
+.sched-day {
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1px;
+  padding: 6px 2px 5px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: #4a5a50;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+  font-weight: 500;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sched-day .sched-solar {
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+.sched-day .sched-lunar-d {
+  font-size: 9px;
+  line-height: 1.1;
+  color: #8a9a91;
+  font-weight: 500;
+}
+
+.sched-day.muted {
+  color: transparent;
+  background: transparent;
+  border: none;
+  cursor: default;
+  min-height: 8px;
+}
+
+.sched-day:hover:not(.muted) {
+  background: rgba(62, 207, 139, 0.12);
+  border-color: rgba(62, 207, 139, 0.25);
+}
+
+.sched-day.selected:not(.today) {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(32, 56, 44, 0.12);
+  box-shadow: 0 2px 8px rgba(20, 60, 40, 0.06);
+}
+
+.sched-day.today {
+  background: var(--mint-500, #3ecf8b);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(62, 207, 139, 0.35);
+  border-color: rgba(0, 0, 0, 0.04);
+}
+
+.sched-day.today .sched-solar,
+.sched-day.today .sched-lunar-d {
+  color: #fff;
+  font-weight: 700;
+}
+
+.sched-dot-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 2px;
+  max-width: 100%;
+}
+
+.sched-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2fae74;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.sched-day.today .sched-dot {
+  background: #fff;
+  opacity: 0.9;
+}
+
+.sched-dot-more {
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+  color: #2fae74;
+  margin-left: 0;
+}
+
+.sched-day.today .sched-dot-more {
+  color: #fff;
+}
+
+.sched-side {
+  flex: 0 1 400px;
+  min-width: 280px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap, 18px);
+  min-height: 0;
+  align-self: stretch;
+}
+
+@media (min-width: 900px) {
+  .sched-side {
+    max-width: 400px;
+  }
+}
+
+/* 上：当日日程 高度不压缩；上边框位置与即将开始之间的间距保持 var(--gap) */
+.sched-detail-card {
+  flex-shrink: 0;
+  padding: 16px 16px 18px;
+}
+
+/* 下：加宽、向下铺满侧栏剩余高度，底与月历大格同高（即与左栏底对齐） */
+.sched-upcoming-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px 16px 18px;
+  box-sizing: border-box;
+}
+
+.sched-upcoming-card .sched-panel-title {
+  flex-shrink: 0;
+}
+
+.sched-upcoming-card .sched-upcoming-list,
+.sched-upcoming-card > p.sched-empty {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sched-panel-title {
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1a2e22;
+}
+
+.sched-panel-date {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #6b7f74;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sched-inline-icon {
+  color: #3ecf8b;
+  flex-shrink: 0;
+}
+
+.sched-list {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.sched-list-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line, rgba(32, 56, 44, 0.08));
+}
+
+.sched-list-item:last-of-type {
+  border-bottom: none;
+}
+
+.sched-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2a3c33;
+}
+
+.sched-item-time {
+  font-size: 12px;
+  color: #18724a;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.sched-item-note {
+  font-size: 11px;
+  color: var(--muted, #5d6a62);
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.sched-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: flex-end;
+}
+
+.sched-mini-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--line, rgba(32, 56, 44, 0.12));
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #3a4a40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.sched-mini-btn.danger {
+  color: #b45c4a;
+  border-color: rgba(180, 92, 74, 0.25);
+}
+
+.sched-mini-btn.danger:hover {
+  background: rgba(180, 92, 74, 0.08);
+}
+
+.sched-empty {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #8a9a91;
+  line-height: 1.45;
+}
+
+.sched-upcoming-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sched-upcoming-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line, rgba(32, 56, 44, 0.06));
+  font-size: 12px;
+}
+
+.sched-upcoming-list li:last-child {
+  border-bottom: none;
+}
+
+.sched-up-title {
+  font-weight: 600;
+  color: #2a3c33;
+}
+
+.sched-up-meta {
+  color: #6b7f74;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Modals */
+.sched-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.sched-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 40, 32, 0.35);
+  border: none;
+  cursor: pointer;
+  display: block;
+  padding: 0;
+  margin: 0;
+}
+
+.sched-form,
+.sched-remind {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  margin: 0;
+  box-shadow: 0 24px 60px rgba(20, 60, 40, 0.2);
+  padding: 20px 20px 18px;
+  animation: sched-pop 0.22s ease;
+}
+
+.sched-remind {
+  text-align: center;
+  max-width: 360px;
+}
+
+.sched-remind-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #dff3e6, #f0faf4);
+  color: #18724a;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+}
+
+.sched-remind-text {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #2a3c33;
+}
+
+.sched-remind-time {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: #6b7f74;
+}
+
+.sched-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 8px;
+}
+
+.sched-form-h {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #1a2e22;
+}
+
+.sched-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a5a50;
+  letter-spacing: 0.02em;
+}
+
+.sched-input,
+.sched-textarea {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--line, rgba(32, 56, 44, 0.12));
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a2e22;
+  box-sizing: border-box;
+}
+
+.sched-textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.sched-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 4px;
+}
+
+@keyframes sched-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .sched-body--with-side {
+    flex-direction: column;
+  }
+
+  .sched-side {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .sched-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+}

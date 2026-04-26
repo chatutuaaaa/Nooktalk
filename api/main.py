@@ -1,20 +1,29 @@
 """
 天气 HTTP 接口，供 Nooktalk 前端调用；图标判定逻辑与 forum home 视图一致。
 运行：在项目根目录执行
-  set AMAP_KEY=你的key
   python -m uvicorn api.main:app --host 127.0.0.1 --port 5055
+（AMAP_KEY 从项目根 .env 读取，见 .env.example）
 """
 from __future__ import annotations
 
 import os
 from datetime import datetime
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from .amap_weather import get_live_weather, resolve_adcode_for_client_ip
+from .music_routes import router as music_router
+from .amap_weather import (
+    get_forecast_casts,
+    get_live_weather,
+    load_project_env,
+    resolve_adcode_for_client_ip,
+    _amap_key,
+)
+
+load_project_env()
 
 app = FastAPI(title="Nooktalk API")
+app.include_router(music_router, prefix="/api", tags=["music"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -87,12 +96,18 @@ def health() -> dict[str, str]:
 
 @app.get("/api/weather")
 def weather(request: Request) -> dict:
+    load_project_env()
     adcode = resolve_adcode_for_client_ip(_client_ip(request))
-    live = get_live_weather(adcode)
+    live, err = get_live_weather(adcode)
     if not live:
+        if err == "no_key" or not _amap_key():
+            err_out = "no_key"
+        else:
+            err_out = "unavailable"
         return {
             "ok": False,
-            "error": "no_key_or_unavailable" if not os.environ.get("AMAP_KEY", "").strip() else "unavailable",
+            "error": err_out,
+            "amapInfo": err if err and err != "no_key" else None,
             "live": None,
             "weatherLocation": None,
             "weatherDate": None,
@@ -117,4 +132,50 @@ def weather(request: Request) -> dict:
         "weatherLocation": loc,
         "weatherDate": wdate,
         "weatherIcon": icon,
+    }
+
+
+@app.get("/api/weather/forecast")
+def weather_forecast(request: Request) -> dict:
+    """未来数日预报（高德 casts，多为 4 日）；与实况同一套 IP→adcode。"""
+    load_project_env()
+    adcode = resolve_adcode_for_client_ip(_client_ip(request))
+    days_raw, err, head = get_forecast_casts(adcode)
+    if not days_raw:
+        if err == "no_key" or not _amap_key():
+            err_out = "no_key"
+        else:
+            err_out = "unavailable"
+        return {
+            "ok": False,
+            "error": err_out,
+            "amapInfo": err if err and err != "no_key" else None,
+            "location": None,
+            "adcode": adcode,
+            "days": [],
+        }
+    loc = None
+    if head:
+        loc = " ".join(
+            [p for p in [head.get("province", ""), head.get("city", "")] if p]
+        ).strip() or None
+    days_out: list[dict] = []
+    for d in days_raw:
+        day_w = d.get("dayweather") or ""
+        date_s = d.get("date") or "2000-01-01"
+        icon = pick_weather_icon(day_w, f"{date_s} 12:00:00")
+        days_out.append(
+            {
+                **d,
+                "weatherIcon": icon,
+            }
+        )
+    return {
+        "ok": True,
+        "error": None,
+        "amapInfo": None,
+        "location": loc,
+        "adcode": adcode,
+        "days": days_out,
+        "note": "高德 Web 服务预报为多日滚动（常见为 4 日），以接口返回条数为准。",
     }

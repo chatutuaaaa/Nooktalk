@@ -1,0 +1,270 @@
+/* 与 .col-center--weather 配合：占满中间列高度，底与左栏对齐 */
+.ww-page--fill {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  gap: var(--gap, 18px);
+}
+
+.ww-hero {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20px 22px 18px;
+}
+
+.ww-hero-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.ww-hero-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff6e0, #ffefd0);
+  color: #c27803;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(200, 140, 20, 0.15);
+}
+
+.ww-hero-zh {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #1a2e22;
+}
+
+.ww-hero-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted, #5d6a62);
+  line-height: 1.45;
+}
+
+.ww-hero-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted, #5d6a62);
+}
+
+.ww-loc {
+  margin: 12px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2a4a38;
+}
+
+.ww-pin {
+  color: #6b7f74;
+  flex-shrink: 0;
+}
+
+.ww-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8a9a91;
+}
+
+.ww-unavailable {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--muted, #5d6a62);
+  line-height: 1.5;
+}
+
+/* 与顶栏「未来天气」卡同宽：整行四等分，第 4 日右缘与顶栏卡右缘对齐 */
+.ww-grid {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  width: 100%;
+  box-sizing: border-box;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.ww-day {
+  padding: 16px 14px 18px;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.ww-day-top {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line, rgba(32, 56, 44, 0.08));
+}
+
+.ww-date {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1a2e22;
+  font-variant-numeric: tabular-nums;
+}
+
+.ww-weekday {
+  font-size: 12px;
+  color: #18724a;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ww-day-icon-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2px 0 12px;
+  padding: 8px 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(240, 250, 244, 0.5));
+  border-radius: 16px;
+  border: 1px solid rgba(32, 56, 44, 0.06);
+}
+
+.ww-day-icon {
+  display: block;
+  width: 56px;
+  height: 56px;
+}
+
+.ww-block {
+  margin-bottom: 10px;
+}
+
+.ww-block--night {
+  margin-bottom: 8px;
+  padding: 8px 0 0;
+  border-top: 1px dashed rgba(32, 56, 44, 0.1);
+}
+
+.ww-block-label {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a9a91;
+}
+
+.ww-day-weather,
+.ww-night-weather {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1a4a32;
+  line-height: 1.3;
+}
+
+.ww-night-weather {
+  color: #3a5060;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ww-templine {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.ww-temp.high,
+.ww-temp.low {
+  font-size: 28px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.ww-temp.high {
+  color: #c45c2a;
+}
+
+.ww-temp.low {
+  color: #2a6f8f;
+  font-size: 25px;
+}
+
+.ww-temp-unit {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7f74;
+  margin-left: 1px;
+}
+
+.ww-wind-block {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line, rgba(32, 56, 44, 0.08));
+}
+
+.ww-wind-line {
+  margin: 0 0 6px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #4a5a50;
+}
+
+.ww-wind-line:last-child {
+  margin-bottom: 0;
+}
+
+.ww-wind-k {
+  flex: 0 0 auto;
+  color: #8a9a91;
+  font-weight: 600;
+}
+
+.ww-wind-v {
+  text-align: right;
+  min-width: 0;
+  font-weight: 600;
+  color: #2a3c33;
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .ww-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .ww-grid {
+    grid-template-columns: 1fr;
+  }
+}
