@@ -172,6 +172,7 @@ npm run dev
 4. 访问 `http://<服务器公网IP>/` ；`curl -sS http://127.0.0.1:5055/api/health` 在服务器上应返回 `ok`。
 
 - 可改环境变量 `APP_DIR`、`REPO_URL`、`NODE_MAJOR` 重跑或换目录/Node 大版本。  
+- 改 `.env`、Nginx 或 `git pull` 后需要重启时，可 `sudo bash /var/www/nooktalk/scripts/restart-nooktalk.sh`（`nginx -t`、重载 Nginx、重启 `nooktalk-api`）。  
 - 静态资源目录：`/var/www/nooktalk/dist`；API 经 Nginx 走 `/api/`。  
 - 若 `bootstrap-server.sh` 尚未推送到 `main`，请用方式 B 或先 `git pull` 再执行仓库内脚本。  
 - 实际生效的 `nooktalk-api.service` 由 `bootstrap-server.sh` 写入；仓库里 `deploy/nooktalk-api.service` 仅作参考，运行用户以脚本解析为准（RHEL 多为 `nginx`）。
