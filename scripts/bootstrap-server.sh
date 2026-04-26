@@ -115,10 +115,18 @@ npm -v
 echo "==> 运行用户: $APP_USER:$APP_GROUP"
 
 # ---------- 拉代码 ----------
-# 若上次部署已将 $APP_DIR chown 给 $APP_USER，root 再 pull 会报 dubious ownership
+# 若上次部署已将 $APP_DIR chown 给 $APP_USER，root 再 pull 会报 dubious ownership。
+# 注意：仅 git -c 无效，pull 会起子进程且不继承 -c，需写入 global（部署机 root 上一条即可，已存在则跳过）
+ensure_git_safe_directory() {
+  if git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$APP_DIR" 2>/dev/null; then
+    return 0
+  fi
+  git config --global --add safe.directory "$APP_DIR"
+}
 if [ -d "$APP_DIR/.git" ]; then
   echo "==> 已有仓库，git pull"
-  git -c "safe.directory=$APP_DIR" -C "$APP_DIR" pull --ff-only
+  ensure_git_safe_directory
+  git -C "$APP_DIR" pull --ff-only
 else
   if [ -e "$APP_DIR" ]; then
     echo "错误: $APP_DIR 已存在且不是本仓库。请设 APP_DIR 或删除后重试。" >&2
