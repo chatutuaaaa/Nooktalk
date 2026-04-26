@@ -137,7 +137,7 @@ npm run dev
 
 ---
 
-## 服务器部署（Ubuntu / Debian）
+## 服务器部署（CentOS Stream / RHEL 系 或 Ubuntu / Debian）
 
 > **安全**：公网服务器请勿在聊天/工单里发 root 密码；用 SSH 公钥登录、禁用 root 密码。若已泄露密码，请立即在提供商控制台**修改密码**并启用密钥。
 
@@ -150,23 +150,31 @@ npm run dev
    curl -fsSL https://raw.githubusercontent.com/chatutuaaaa/Nooktalk/main/scripts/bootstrap-server.sh -o /tmp/nook-bootstrap.sh
    bash /tmp/nook-bootstrap.sh
    ```  
-   **方式 B**  
+   **方式 B**（先只装 `git` 再克隆并执行仓库内脚本；包管理因系统而异）  
+   **CentOS Stream / RHEL 系**  
+   ```bash
+   dnf install -y git
+   git clone https://github.com/chatutuaaaa/Nooktalk.git /var/www/nooktalk
+   bash /var/www/nooktalk/scripts/bootstrap-server.sh
+   ```  
+   **Debian / Ubuntu**  
    ```bash
    apt-get update && apt-get install -y git
    git clone https://github.com/chatutuaaaa/Nooktalk.git /var/www/nooktalk
    bash /var/www/nooktalk/scripts/bootstrap-server.sh
    ```
 
-3. 脚本会安装 `nginx`、通过 NodeSource 装 Node 20+、建 venv、拉依赖、`npm run build`、写 `systemd` 单元 `nooktalk-api`、配置 Nginx 站点。  
-   环境变量：首次会在 `/var/www/nooktalk/.env` 创建占位，请执行：  
-   `nano /var/www/nooktalk/.env` 填好 `AMAP_KEY`，再 `systemctl restart nooktalk-api`  
-   本地曲库：把音乐文件 scp 到 `/var/www/nooktalk/music/` 并 `chown -R www-data:www-data /var/www/nooktalk/music`（脚本已建目录）。
+3. 脚本会安装 `nginx`、通过 NodeSource 装 Node 18+（默认 22 系）、`python3` venv、拉依赖、`npm run build`、写入 **systemd** 单元 `nooktalk-api`、并配置 Nginx 站点。  
+   - RHEL 系：站点写在 `/etc/nginx/conf.d/nooktalk.conf`；若 **SELinux** 为 Enforcing 会设 `httpd_can_network_connect` 以便 Nginx 反代本机 API；若 **firewalld** 在跑会放行 `http`。**请确认云安全组也放行 80 端口。**  
+   - 环境变量：首次会在 `/var/www/nooktalk/.env` 创建占位，请 `nano /var/www/nooktalk/.env` 填好 `AMAP_KEY` 后 `systemctl restart nooktalk-api`。  
+   - 本地曲库：把音乐文件 scp 到 `/var/www/nooktalk/music/`，将目录属主与运行用户一致（Debian 系多为 `www-data`，RHEL 系经脚本多为 `nginx`），例如 `chown -R nginx:nginx /var/www/nooktalk/music` 或 `chown -R www-data:www-data /var/www/nooktalk/music`（脚本已建目录，并在收尾对整站做了 `chown`）。
 
 4. 访问 `http://<服务器公网IP>/` ；`curl -sS http://127.0.0.1:5055/api/health` 在服务器上应返回 `ok`。
 
-- 可改环境变量 `APP_DIR`、`REPO_URL` 重跑或换目录。  
+- 可改环境变量 `APP_DIR`、`REPO_URL`、`NODE_MAJOR` 重跑或换目录/Node 大版本。  
 - 静态资源目录：`/var/www/nooktalk/dist`；API 经 Nginx 走 `/api/`。  
-- 若 `bootstrap-server.sh` 尚未推送到 `main`，请用方式 B 或先 `git pull` 再执行仓库内脚本。
+- 若 `bootstrap-server.sh` 尚未推送到 `main`，请用方式 B 或先 `git pull` 再执行仓库内脚本。  
+- 实际生效的 `nooktalk-api.service` 由 `bootstrap-server.sh` 写入；仓库里 `deploy/nooktalk-api.service` 仅作参考，运行用户以脚本解析为准（RHEL 多为 `nginx`）。
 
 ---
 

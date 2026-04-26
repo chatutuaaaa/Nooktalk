@@ -1,3 +1,5 @@
+# 参考用模板。正式环境应使用 scripts/bootstrap-server.sh 生成 /etc/systemd/system/nooktalk-api.service
+# （Debian/Ubuntu 上多为 User=www-data；RHEL/CentOS 系多为 User=nginx。）
 [Unit]
 Description=Nooktalk FastAPI (weather + local music)
 After=network.target
