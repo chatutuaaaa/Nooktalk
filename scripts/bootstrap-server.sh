@@ -194,8 +194,9 @@ systemctl --no-pager -l status nooktalk-api || true
 # ---------- Nginx 站点（RHEL 用 conf.d；Debian/Ubuntu 用 sites-*）----------
 install_nginx_config() {
   if [ "$PKG" = rhel ]; then
+    # 系统包常带 default.conf，与 nooktalk 里 server_name _ 会冲突；移出 conf.d 以免被 include
     if [ -f /etc/nginx/conf.d/default.conf ]; then
-      mv -f /etc/nginx/conf.d/default.conf "/etc/nginx/conf.d/default.conf.bak.$(date +%s)" 2>/dev/null || true
+      mv -f /etc/nginx/conf.d/default.conf "/root/nginx-default.conf.bak.$(date +%s)" 2>/dev/null || true
     fi
     cp -f "$APP_DIR/deploy/nginx-nooktalk.conf" /etc/nginx/conf.d/nooktalk.conf
     echo "==> 已写 /etc/nginx/conf.d/nooktalk.conf"
@@ -229,7 +230,11 @@ fi
 
 systemctl enable nginx 2>/dev/null || true
 nginx -t
-systemctl reload nginx
+if systemctl is-active --quiet nginx 2>/dev/null; then
+  systemctl reload nginx
+else
+  systemctl start nginx
+fi
 
 echo ""
 echo "==> 改 .env 后执行: systemctl restart nooktalk-api"
