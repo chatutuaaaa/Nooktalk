@@ -115,9 +115,10 @@ npm -v
 echo "==> 运行用户: $APP_USER:$APP_GROUP"
 
 # ---------- 拉代码 ----------
+# 若上次部署已将 $APP_DIR chown 给 $APP_USER，root 再 pull 会报 dubious ownership
 if [ -d "$APP_DIR/.git" ]; then
   echo "==> 已有仓库，git pull"
-  git -C "$APP_DIR" pull --ff-only
+  git -c "safe.directory=$APP_DIR" -C "$APP_DIR" pull --ff-only
 else
   if [ -e "$APP_DIR" ]; then
     echo "错误: $APP_DIR 已存在且不是本仓库。请设 APP_DIR 或删除后重试。" >&2
