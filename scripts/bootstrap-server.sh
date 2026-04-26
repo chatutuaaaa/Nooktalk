@@ -211,6 +211,10 @@ install_nginx_config() {
     echo "==> 已写 /etc/nginx/conf.d/nooktalk.conf"
   else
     mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+    if [ -e /etc/nginx/sites-enabled/default ]; then
+      rm -f /etc/nginx/sites-enabled/default
+      echo "==> 已去掉 sites-enabled/default，避免与 nooktalk 重复 default_server / server_name _"
+    fi
     cp -f "$APP_DIR/deploy/nginx-nooktalk.conf" /etc/nginx/sites-available/nooktalk
     ln -sf /etc/nginx/sites-available/nooktalk /etc/nginx/sites-enabled/nooktalk
     echo "==> 已写 sites-available/nooktalk 并链到 sites-enabled"
