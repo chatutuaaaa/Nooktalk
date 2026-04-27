@@ -8,10 +8,16 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
+from sqlalchemy import text
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .music_routes import router as music_router
+from .auth_routes import router as auth_router
+from .schedule_routes import router as schedule_router
+from .post_routes import router as post_router
+from .db import engine
+from .models import Base
 from .amap_weather import (
     get_forecast_casts,
     get_live_weather,
@@ -24,6 +30,9 @@ load_project_env()
 
 app = FastAPI(title="Nooktalk API")
 app.include_router(music_router, prefix="/api", tags=["music"])
+app.include_router(auth_router, prefix="/api")
+app.include_router(schedule_router, prefix="/api")
+app.include_router(post_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +41,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+def create_tables() -> None:
+    Base.metadata.create_all(bind=engine)
+    # 兼容已存在 posts 表的开发环境：补齐 topics 字段（无迁移工具时的轻量兜底）
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE posts ADD COLUMN IF NOT EXISTS topics VARCHAR(500) DEFAULT ''"))
+        except Exception:
+            # 非 PostgreSQL 或已具备该列时忽略
+            pass
 
 
 def _client_ip(request: Request) -> str | None:

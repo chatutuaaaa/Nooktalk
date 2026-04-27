@@ -59,28 +59,33 @@ function eventsByDateKey(events) {
   return m;
 }
 
-const REMIND_KEY = "nooktalk-schedule-fires";
+function remindKeyFor(scopeKey) {
+  const safe = String(scopeKey || "guest").trim() || "guest";
+  return `nooktalk-schedule-fires:${safe}`;
+}
 
-function readFired() {
+function readFired(scopeKey) {
+  const key = remindKeyFor(scopeKey);
   try {
-    return new Set(JSON.parse(sessionStorage.getItem(REMIND_KEY) || "[]"));
+    return new Set(JSON.parse(sessionStorage.getItem(key) || "[]"));
   } catch {
     return new Set();
   }
 }
 
-function markFired(id) {
-  const s = readFired();
+function markFired(scopeKey, id) {
+  const key = remindKeyFor(scopeKey);
+  const s = readFired(scopeKey);
   s.add(id);
-  sessionStorage.setItem(REMIND_KEY, JSON.stringify([...s]));
+  sessionStorage.setItem(key, JSON.stringify([...s]));
 }
 
 function fireId(event) {
   return `${event.id}-${event.startAt}`;
 }
 
-export function ScheduleCalendar() {
-  const { events, addEvent, removeEvent } = useSchedule();
+export function ScheduleCalendar({ scheduleScopeKey = "guest", authToken = "" }) {
+  const { events, addEvent, removeEvent } = useSchedule(scheduleScopeKey, authToken);
   const [viewMode, setViewMode] = useState("month");
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -91,7 +96,11 @@ export function ScheduleCalendar() {
   const [formNote, setFormNote] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [reminder, setReminder] = useState(null);
-  const firedRef = useRef(readFired());
+  const firedRef = useRef(readFired(scheduleScopeKey));
+
+  useEffect(() => {
+    firedRef.current = readFired(scheduleScopeKey);
+  }, [scheduleScopeKey]);
 
   const [upcomingNow, setUpcomingNow] = useState(() => Date.now());
   useEffect(() => {
@@ -190,13 +199,13 @@ export function ScheduleCalendar() {
         if (d > 0 && d <= 2 * 60 * 1000) {
           setReminder({ kind: "soon", event: e, minutes: Math.ceil(d / 60000) || 1 });
           firedRef.current.add(fid);
-          markFired(fid);
+          markFired(scheduleScopeKey, fid);
           return;
         }
         if (d <= 0 && d > -2 * 60 * 1000) {
           setReminder({ kind: "now", event: e });
           firedRef.current.add(fid);
-          markFired(fid);
+          markFired(scheduleScopeKey, fid);
           return;
         }
       }
@@ -204,7 +213,7 @@ export function ScheduleCalendar() {
     const id = setInterval(check, 4000);
     check();
     return () => clearInterval(id);
-  }, [events]);
+  }, [events, scheduleScopeKey]);
 
   return (
     <div className="sched-page" lang="zh-CN">

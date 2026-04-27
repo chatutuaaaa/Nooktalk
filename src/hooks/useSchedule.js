@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 
-const STORAGE_KEY = "nooktalk-schedule-v1";
+function storageKeyFor(scopeKey) {
+  const safe = String(scopeKey || "guest").trim() || "guest";
+  return `nooktalk-schedule-v1:${safe}`;
+}
 
 function normalize(list) {
   return list
@@ -21,9 +24,10 @@ function normalize(list) {
     .sort((a, b) => a.startAt - b.startAt);
 }
 
-function loadFromStorage() {
+function loadFromStorage(scopeKey) {
+  const key = storageKeyFor(scopeKey);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const arr = JSON.parse(raw);
     return normalize(Array.isArray(arr) ? arr : []);
@@ -32,16 +36,46 @@ function loadFromStorage() {
   }
 }
 
-function saveToStorage(list) {
+function saveToStorage(scopeKey, list) {
+  const key = storageKeyFor(scopeKey);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    localStorage.setItem(key, JSON.stringify(list));
   } catch {
     // ignore
   }
 }
 
-export function useSchedule() {
-  const [events, setEvents] = useState(() => loadFromStorage());
+function isUserScope(scopeKey) {
+  return String(scopeKey || "").startsWith("user:");
+}
+
+export function useSchedule(scopeKey = "guest", authToken = "") {
+  const [events, setEvents] = useState(() => loadFromStorage(scopeKey));
+  const useRemote = isUserScope(scopeKey) && Boolean(authToken);
+
+  useEffect(() => {
+    if (!useRemote) {
+      setEvents(loadFromStorage(scopeKey));
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/schedule/events", {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const data = await res.json();
+        if (!cancelled && res.ok && Array.isArray(data?.events)) {
+          setEvents(normalize(data.events));
+        }
+      } catch {
+        if (!cancelled) setEvents([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authToken, scopeKey, useRemote]);
 
   const addEvent = useCallback((payload) => {
     const id =
@@ -55,30 +89,70 @@ export function useSchedule() {
       startAt: Number(payload.startAt),
     };
     if (!rec.title || !Number.isFinite(rec.startAt)) return;
+    if (useRemote) {
+      (async () => {
+        try {
+          const res = await fetch("/api/schedule/events", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(rec),
+          });
+          const data = await res.json();
+          if (!res.ok) return;
+          const eventOut = normalize([data?.event]).at(0);
+          if (!eventOut) return;
+          setEvents((prev) =>
+            normalize(prev.filter((e) => e.id !== eventOut.id).concat([eventOut])),
+          );
+        } catch {
+          // ignore transient network errors in UI for now
+        }
+      })();
+      return;
+    }
     setEvents((prev) => {
       const next = normalize(
         prev.filter((e) => e.id !== rec.id).concat([rec]),
       );
-      saveToStorage(next);
+      saveToStorage(scopeKey, next);
       return next;
     });
-  }, []);
+  }, [authToken, scopeKey, useRemote]);
 
   const removeEvent = useCallback((id) => {
+    if (useRemote) {
+      (async () => {
+        try {
+          const res = await fetch(`/api/schedule/events/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+          if (!res.ok) return;
+          setEvents((prev) => prev.filter((e) => e.id !== id));
+        } catch {
+          // ignore transient network errors in UI for now
+        }
+      })();
+      return;
+    }
     setEvents((prev) => {
       const next = prev.filter((e) => e.id !== id);
-      saveToStorage(next);
+      saveToStorage(scopeKey, next);
       return next;
     });
-  }, []);
+  }, [authToken, scopeKey, useRemote]);
 
   useEffect(() => {
+    if (useRemote) return undefined;
     const onStorage = (ev) => {
-      if (ev.key === STORAGE_KEY) setEvents(loadFromStorage());
+      if (ev.key === storageKeyFor(scopeKey)) setEvents(loadFromStorage(scopeKey));
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [scopeKey, useRemote]);
 
   return { events, addEvent, removeEvent };
 }
