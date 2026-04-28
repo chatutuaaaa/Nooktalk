@@ -80,6 +80,39 @@
   min-height: 0;
 }
 
+.subpage-with-back {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  gap: 10px;
+}
+
+.subpage-back-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.subpage-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.subpage-main > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.subpage-back-inside {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+}
+
 .col-right {
   flex: 0 0 var(--side);
   min-width: 0;
@@ -485,6 +518,7 @@ button.weather-card.weather-card--go:focus {
   gap: 14px;
   height: 100%;
   min-height: 0;
+  align-content: start;
 }
 
 .forum-page--detail {
@@ -610,10 +644,16 @@ button.weather-card.weather-card--go:focus {
   display: grid;
   gap: 10px;
   padding-right: 2px;
+  align-content: start;
 }
 
 .forum-post {
   padding: 14px 14px 12px;
+  min-height: 142px;
+  max-height: 142px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .forum-post-btn {
@@ -661,6 +701,10 @@ button.weather-card.weather-card--go:focus {
   color: #6b7f74;
   font-size: 13px;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .forum-post-foot {
@@ -670,6 +714,30 @@ button.weather-card.weather-card--go:focus {
   align-items: center;
   color: #7f9087;
   font-size: 12px;
+  margin-top: auto;
+}
+
+.forum-post-foot--split {
+  justify-content: space-between;
+}
+
+.forum-post-foot-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.forum-post-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.forum-post-time {
+  white-space: nowrap;
+  margin-left: auto;
 }
 
 .forum-stat {
@@ -753,6 +821,13 @@ button.weather-card.weather-card--go:focus {
   align-items: center;
   justify-content: center;
   padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.forum-side-compose-close:hover {
+  transform: translateY(-1px);
+  border-color: rgba(94, 160, 123, 0.45);
+  box-shadow: 0 7px 16px rgba(70, 92, 122, 0.14);
 }
 
 .forum-side-compose-close-icon {
@@ -919,6 +994,12 @@ button.weather-card.weather-card--go:focus {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
+}
+
+.forum-comment-form button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(70, 92, 122, 0.14);
 }
 
 .forum-comment-actions {
@@ -945,6 +1026,488 @@ button.weather-card.weather-card--go:focus {
   padding: 10px 12px;
 }
 
+.forum-deleted-banner {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(200, 160, 90, 0.45);
+  background: rgba(255, 248, 220, 0.65);
+  color: #33483d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.forum-deleted-banner p {
+  margin: 0 0 10px;
+}
+
+.forum-btn-restore {
+  border: none;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #3f7f65;
+  color: #fff;
+}
+
+.forum-soft-delete-post {
+  margin-left: 6px;
+  border: none;
+  border-radius: 10px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  background: rgba(215, 55, 72, 0.12);
+  color: #9a2f3f;
+}
+
+.forum-comment-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.forum-comment-actions-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.forum-comment-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #6b7b74;
+  font-size: 12px;
+}
+
+.forum-comment-like.active {
+  color: #d73748;
+}
+
+.forum-comment-like:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.forum-comment-like-n {
+  font-weight: 600;
+}
+
+.forum-comment-del {
+  border: none;
+  background: transparent;
+  color: #8a6270;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.admin-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-page {
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 14px;
+}
+
+.admin-page > .card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.admin-stats,
+.admin-users-section {
+  padding: 16px 18px;
+}
+
+.admin-users-section {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-section-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: #2c4a54;
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.admin-section-head .admin-section-title {
+  margin: 0;
+}
+
+.admin-search {
+  min-width: 240px;
+  max-width: 320px;
+  height: 36px;
+  border: 1px solid rgba(180, 200, 210, 0.75);
+  border-radius: 16px;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  transition: transform 0.16s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.admin-search:hover {
+  transform: translateY(-1px);
+  border-color: rgba(118, 160, 203, 0.7);
+  box-shadow: 0 6px 14px rgba(57, 92, 127, 0.12);
+}
+
+.admin-search:focus-within {
+  transform: translateY(-1px);
+  border-color: rgba(84, 145, 230, 0.9);
+  box-shadow:
+    0 6px 14px rgba(57, 92, 127, 0.12),
+    0 0 0 2px rgba(84, 145, 230, 0.16);
+}
+
+.admin-search img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  opacity: 0.65;
+}
+
+.admin-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: #2f4657;
+  outline: none;
+}
+
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-stat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 250, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.admin-stat-cell:hover {
+  transform: translateY(-3px);
+  border-color: rgba(99, 147, 207, 0.4);
+  box-shadow: 0 8px 16px rgba(48, 85, 132, 0.12);
+}
+
+.admin-stat-cell:focus {
+  outline: none !important;
+}
+
+.admin-stat-cell:focus-visible {
+  outline: none !important;
+  box-shadow: inset 0 0 0 2px rgba(76, 132, 199, 0.55) !important;
+}
+
+.admin-stat-cell.is-active {
+  border-color: rgba(255, 255, 255, 0);
+  background: rgba(232, 243, 255, 0.95);
+  box-shadow: inset 0 0 0 2px rgba(76, 132, 199, 0.55);
+}
+
+.admin-stat-cell strong {
+  font-size: 20px;
+  color: #1f4260;
+}
+
+.admin-stat-cell span {
+  font-size: 12px;
+  color: #5c7080;
+}
+
+.admin-today h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #3d5f70;
+}
+
+.admin-today p {
+  margin: 0;
+  font-size: 13px;
+  color: #5a6f7d;
+}
+
+.admin-users-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.admin-users-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.admin-users-table th,
+.admin-users-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(180, 200, 210, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(84, 145, 230, 0.7);
+  background: rgba(84, 145, 230, 0.12);
+  color: #1f4f8c;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.admin-muted {
+  margin: 0;
+  font-size: 13px;
+  color: #6f8278;
+}
+
+.my-posts-section {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.my-posts-hero {
+  min-height: 126px;
+  max-height: 126px;
+  box-sizing: border-box;
+}
+
+.my-posts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.my-post-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.my-post-tab {
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(160, 180, 168, 0.5);
+  background: #fff;
+  color: #406151;
+  font-size: 12px;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
+}
+
+.my-post-tab:hover {
+  transform: translateY(-1px);
+  border-color: rgba(94, 160, 123, 0.45);
+  box-shadow: 0 7px 16px rgba(70, 92, 122, 0.14);
+}
+
+.my-post-tab.active {
+  background: linear-gradient(145deg, #ebfff3, #dcf8e8);
+  border-color: rgba(62, 207, 139, 0.45);
+  color: #1f704a;
+  font-weight: 700;
+}
+
+.my-posts-list {
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  padding-right: 8px;
+  align-content: start;
+  background: rgba(225, 234, 229, 0.82);
+  border-radius: 12px;
+}
+
+.my-post-item {
+  position: relative;
+  padding-right: 50px;
+}
+
+.my-post-delete-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(215, 55, 72, 0.35);
+  background: rgba(215, 55, 72, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.my-post-delete-btn:hover {
+  background: rgba(215, 55, 72, 0.14);
+}
+
+.my-post-delete-btn img {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+  display: block;
+}
+
+.my-post-restore-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(62, 207, 139, 0.45);
+  background: rgba(62, 207, 139, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.my-post-restore-btn:hover {
+  background: rgba(62, 207, 139, 0.16);
+}
+
+.my-post-restore-btn img {
+  width: 14px;
+  height: 14px;
+  opacity: 0.72;
+  display: block;
+}
+
+.recent-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.recent-pager-label {
+  font-size: 12px;
+  color: #657a6f;
+}
+
+.recent-pager-btn {
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(160, 180, 168, 0.5);
+  background: #fff;
+  color: #406151;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.recent-pager-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(94, 160, 123, 0.45);
+  box-shadow: 0 7px 16px rgba(70, 92, 122, 0.14);
+}
+
+.recent-pager-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.my-post-edit-btn {
+  position: absolute;
+  top: 50%;
+  right: 44px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(84, 145, 230, 0.35);
+  background: rgba(84, 145, 230, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.my-post-edit-btn:hover {
+  background: rgba(84, 145, 230, 0.16);
+}
+
+.my-post-edit-btn img {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+  display: block;
+}
+
 .forum-comment-author {
   margin: 0;
   font-size: 12px;
@@ -958,6 +1521,12 @@ button.weather-card.weather-card--go:focus {
   color: #33483d;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.forum-comment-time {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #7a8d83;
 }
 
 .forum-comment-empty,
@@ -1305,6 +1874,19 @@ button.weather-card.weather-card--go:focus {
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.auth-modal-close:hover {
+  transform: translateY(-1px);
+  border-color: rgba(94, 160, 123, 0.45);
+  box-shadow: 0 7px 16px rgba(70, 92, 122, 0.14);
+}
+
+.forum-side-compose-close:focus-visible,
+.auth-modal-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(84, 145, 230, 0.2);
 }
 
 .auth-form {
@@ -1381,6 +1963,15 @@ button.weather-card.weather-card--go:focus {
   color: #395574;
   font-size: 13px;
   cursor: pointer;
+}
+
+.delete-confirm-actions button {
+  transition: transform 0.15s ease, box-shadow 0.18s ease, border-color 0.18s ease, filter 0.18s ease;
+}
+
+.delete-confirm-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(70, 92, 122, 0.14);
 }
 
 .auth-modal button:disabled,

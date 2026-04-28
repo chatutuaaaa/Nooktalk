@@ -36,6 +36,8 @@ def _public_user(u: User) -> dict:
         "id": u.id,
         "username": u.username,
         "email": u.email,
+        "isSuperuser": getattr(u, "is_superuser", False),
+        "isSilenced": getattr(u, "is_silenced", False),
     }
 
 
@@ -130,6 +132,18 @@ def get_optional_user(
     if not sub.isdigit():
         return None
     return db.get(User, int(sub))
+
+
+def get_current_user_writer(user: User = Depends(get_current_user)) -> User:
+    if getattr(user, "is_silenced", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="您已被禁言，暂时无法发帖与评论")
+    return user
+
+
+def get_current_admin(user: User = Depends(get_current_user)) -> User:
+    if not getattr(user, "is_superuser", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
+    return user
 
 
 @router.get("/me")

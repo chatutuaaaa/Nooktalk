@@ -28,6 +28,10 @@ import commentIcon from "./assets/comment.svg";
 import likeIcon from "./assets/like.svg";
 import previewOpenIcon from "./assets/preview-open.svg";
 import closeIcon from "./assets/close.svg";
+import searchIcon from "./assets/search.svg";
+import deleteIcon from "./assets/delete.svg";
+import editIcon from "./assets/edit.svg";
+import undoIcon from "./assets/undo.svg";
 import "./App.css";
 
 const NAV = [
@@ -71,6 +75,14 @@ function postsPathname() {
   return new URL("posts", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
 }
 
+function recentPathname() {
+  return new URL("recent", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function myPostsPathname() {
+  return new URL("my-posts", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
 function postsComposePathname() {
   return new URL("posts/new", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
 }
@@ -81,6 +93,10 @@ function isPostsComposePathname(pathname = window.location.pathname) {
 
 function postsDetailPathname(postId) {
   return new URL(`posts/${postId}`, `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function adminPathname() {
+  return new URL("admin", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
 }
 
 function postsDetailIdFromPathname(pathname = window.location.pathname) {
@@ -98,6 +114,9 @@ function viewFromPathname() {
   if (p === weatherPathname()) return "weather";
   if (p === timePathname()) return "time";
   if (p === musicPathname()) return "music";
+  if (p === recentPathname()) return "recent";
+  if (p === adminPathname()) return "admin";
+  if (p === myPostsPathname()) return "my-posts";
   if (p === postsPathname() || p === postsComposePathname() || postsDetailIdFromPathname(p)) return "posts";
   return "home";
 }
@@ -146,6 +165,23 @@ function renderMarkdown(mdText) {
   }
   const raw = marked.parse(normalized, { gfm: true, breaks: true });
   return DOMPurify.sanitize(raw);
+}
+
+function formatPostTime(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n) || n <= 0) return "时间未知";
+  try {
+    return new Date(n).toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return "时间未知";
+  }
 }
 
 function buildCalendar(d) {
@@ -268,6 +304,930 @@ function WeatherWidget({ onOpenForecast }) {
   );
 }
 
+function AdminDashboard({ authToken, currentUser, onNeedLogin, onBackHome }) {
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [stats, setStats] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [activeMetric, setActiveMetric] = useState("users");
+  const [metricLoading, setMetricLoading] = useState(false);
+  const [metricError, setMetricError] = useState("");
+  const [postsData, setPostsData] = useState([]);
+  const [commentsData, setCommentsData] = useState([]);
+  const [likesData, setLikesData] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const loadAll = useCallback(async () => {
+    setErr("");
+    if (!authToken) {
+      setErr("请先登录后访问后台。");
+      setLoading(false);
+      setStats(null);
+      setUsers([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const h = { Authorization: `Bearer ${authToken}` };
+      const r1 = await fetch("/api/admin/stats", { headers: h });
+      const j1 = await r1.json();
+      if (!r1.ok)
+        throw new Error(typeof j1?.detail === "string" ? j1.detail : "加载统计失败");
+      setStats(j1);
+      const r2 = await fetch("/api/admin/users?limit=100", { headers: h });
+      const j2 = await r2.json();
+      if (!r2.ok)
+        throw new Error(typeof j2?.detail === "string" ? j2.detail : "加载用户失败");
+      setUsers(Array.isArray(j2.items) ? j2.items : []);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "加载失败");
+      setStats(null);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [authToken]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const loadPostsData = useCallback(async () => {
+    if (!authToken) return;
+    if (postsData.length) return;
+    const h = { Authorization: `Bearer ${authToken}` };
+    const res = await fetch("/api/posts?tag=全部&limit=100&offset=0", { headers: h });
+    const data = await res.json();
+    if (!res.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "加载帖子失败");
+    setPostsData(Array.isArray(data?.items) ? data.items : []);
+  }, [authToken, postsData.length]);
+
+  const loadCommentsAndLikesData = useCallback(async () => {
+    if (!authToken) return;
+    if (commentsData.length || likesData.length) return;
+    const h = { Authorization: `Bearer ${authToken}` };
+    const res = await fetch("/api/posts?tag=全部&limit=100&offset=0", { headers: h });
+    const data = await res.json();
+    if (!res.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "加载帖子失败");
+    const posts = Array.isArray(data?.items) ? data.items : [];
+    const detailPayloads = await Promise.all(
+      posts.map(async (p) => {
+        const r = await fetch(`/api/posts/${p.id}?increment_view=false`, { headers: h });
+        const j = await r.json();
+        if (!r.ok) return null;
+        return j;
+      }),
+    );
+    const comments = [];
+    const likes = [];
+    for (const detail of detailPayloads) {
+      if (!detail?.item) continue;
+      if ((detail.item?.stats?.likes ?? 0) > 0) {
+        likes.push({
+          type: "帖子",
+          title: detail.item.title,
+          author: detail.item.author,
+          likes: Number(detail.item.stats.likes || 0),
+        });
+      }
+      for (const c of detail.comments || []) {
+        comments.push({
+          id: c.id,
+          postTitle: detail.item.title,
+          author: c.author,
+          content: c.content,
+          createdAt: c.createdAt,
+          likes: Number(c.likes || 0),
+        });
+        if ((c.likes ?? 0) > 0) {
+          likes.push({
+            type: "评论",
+            title: `@${c.author} · ${detail.item.title}`,
+            author: c.author,
+            likes: Number(c.likes || 0),
+          });
+        }
+      }
+    }
+    setCommentsData(comments);
+    setLikesData(likes.sort((a, b) => b.likes - a.likes));
+  }, [authToken, commentsData.length, likesData.length]);
+
+  const onSelectMetric = useCallback(
+    async (key) => {
+      setActiveMetric(key);
+      setMetricError("");
+      if (!authToken) return;
+      setMetricLoading(true);
+      try {
+        if (key === "posts") {
+          await loadPostsData();
+        } else if (key === "comments" || key === "likes") {
+          await loadCommentsAndLikesData();
+        }
+      } catch (e) {
+        setMetricError(e instanceof Error ? e.message : "加载失败");
+      } finally {
+        setMetricLoading(false);
+      }
+    },
+    [authToken, loadCommentsAndLikesData, loadPostsData],
+  );
+
+  const keyword = searchTerm.trim().toLowerCase();
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((u) => {
+        if (!keyword) return true;
+        return (
+          String(u.id).includes(keyword) ||
+          String(u.username || "").toLowerCase().includes(keyword) ||
+          String(u.email || "").toLowerCase().includes(keyword)
+        );
+      }),
+    [keyword, users],
+  );
+  const filteredSilencedUsers = useMemo(
+    () => filteredUsers.filter((u) => u.isSilenced),
+    [filteredUsers],
+  );
+  const filteredPosts = useMemo(
+    () =>
+      postsData.filter((p) => {
+        if (!keyword) return true;
+        return (
+          String(p.id).includes(keyword) ||
+          String(p.title || "").toLowerCase().includes(keyword) ||
+          String(p.author || "").toLowerCase().includes(keyword)
+        );
+      }),
+    [keyword, postsData],
+  );
+  const filteredComments = useMemo(
+    () =>
+      commentsData.filter((c) => {
+        if (!keyword) return true;
+        return (
+          String(c.id).includes(keyword) ||
+          String(c.postTitle || "").toLowerCase().includes(keyword) ||
+          String(c.author || "").toLowerCase().includes(keyword) ||
+          String(c.content || "").toLowerCase().includes(keyword)
+        );
+      }),
+    [commentsData, keyword],
+  );
+  const filteredLikes = useMemo(
+    () =>
+      likesData.filter((l) => {
+        if (!keyword) return true;
+        return (
+          String(l.type || "").toLowerCase().includes(keyword) ||
+          String(l.title || "").toLowerCase().includes(keyword) ||
+          String(l.author || "").toLowerCase().includes(keyword)
+        );
+      }),
+    [keyword, likesData],
+  );
+
+  const onToggleSilence = async (uid, prevSilenced) => {
+    if (!authToken) return;
+    try {
+      const res = await fetch(`/api/admin/users/${uid}/silence`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ silenced: !prevSilenced }),
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(typeof data?.detail === "string" ? data.detail : "操作失败");
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === uid ? { ...u, isSilenced: Boolean(data?.user?.isSilenced ?? !prevSilenced) } : u,
+        ),
+      );
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "操作失败");
+    }
+  };
+
+  return (
+    <div className="admin-page forum-page" lang="zh-CN">
+      <header className="forum-hero my-posts-hero card">
+        <div>
+          <p className="forum-kicker">ADMIN</p>
+          <h1 className="forum-title">管理后台</h1>
+          <p className="forum-sub">{currentUser ? `管理员：${currentUser.username}` : "请先登录"}</p>
+        </div>
+        <div className="admin-page-actions">
+          {!authToken ? (
+            <button type="button" className="forum-new" onClick={() => onNeedLogin?.()}>
+              登录
+            </button>
+          ) : null}
+          <button type="button" className="forum-back" onClick={onBackHome}>
+            返回首页
+          </button>
+        </div>
+      </header>
+
+      {loading ? <p className="forum-detail-loading card">加载中…</p> : null}
+      {!loading && err ? (
+        <p className="card forum-detail-loading" role="alert">
+          {err}
+        </p>
+      ) : null}
+
+      {!loading && !err && stats ? (
+        <section className="admin-stats card">
+          <h2 className="admin-section-title">全站概要</h2>
+          <div className="admin-stat-grid">
+            <button
+              type="button"
+              className={"admin-stat-cell" + (activeMetric === "users" ? " is-active" : "")}
+              onClick={() => onSelectMetric("users")}
+            >
+              <strong>{stats.totals?.users ?? "—"}</strong>
+              <span>注册用户</span>
+            </button>
+            <button
+              type="button"
+              className={"admin-stat-cell" + (activeMetric === "posts" ? " is-active" : "")}
+              onClick={() => onSelectMetric("posts")}
+            >
+              <strong>{stats.totals?.posts ?? "—"}</strong>
+              <span>帖子（未删）</span>
+            </button>
+            <button
+              type="button"
+              className={"admin-stat-cell" + (activeMetric === "comments" ? " is-active" : "")}
+              onClick={() => onSelectMetric("comments")}
+            >
+              <strong>{stats.totals?.comments ?? "—"}</strong>
+              <span>评论（未删）</span>
+            </button>
+            <button
+              type="button"
+              className={"admin-stat-cell" + (activeMetric === "likes" ? " is-active" : "")}
+              onClick={() => onSelectMetric("likes")}
+            >
+              <strong>{stats.totals?.likes ?? "—"}</strong>
+              <span>点赞记录</span>
+            </button>
+            <button
+              type="button"
+              className={"admin-stat-cell" + (activeMetric === "silenced" ? " is-active" : "")}
+              onClick={() => onSelectMetric("silenced")}
+            >
+              <strong>{stats.totals?.silencedUsers ?? "—"}</strong>
+              <span>当前禁言</span>
+            </button>
+          </div>
+          <div className="admin-today">
+            <h3>今日增量</h3>
+            <p>
+              新用户 {stats.today?.newUsers ?? "—"} · 新帖 {stats.today?.newPosts ?? "—"} · 新评论{" "}
+              {stats.today?.newComments ?? "—"}
+            </p>
+          </div>
+        </section>
+      ) : null}
+
+      {!loading && !err && stats ? (
+        <section className="card admin-users-section">
+          <div className="admin-section-head">
+            <h2 className="admin-section-title">
+              {activeMetric === "users"
+                ? "注册用户"
+                : activeMetric === "posts"
+                  ? "帖子数据"
+                  : activeMetric === "comments"
+                    ? "评论数据"
+                    : activeMetric === "likes"
+                      ? "点赞数据"
+                      : "禁言用户"}
+            </h2>
+            <label className="admin-search">
+              <img src={searchIcon} alt="" aria-hidden="true" />
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="搜索ID/用户名/标题/内容"
+              />
+            </label>
+          </div>
+          {metricLoading ? <p className="admin-muted">加载中…</p> : null}
+          {!metricLoading && metricError ? <p className="admin-muted">{metricError}</p> : null}
+          {!metricLoading && !metricError && activeMetric === "users" && filteredUsers.length ? (
+            <div className="admin-users-scroll">
+              <table className="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>邮箱</th>
+                    <th>注册时间</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td>{u.id}</td>
+                      <td>{u.username}</td>
+                        <td>{u.email}</td>
+                        <td>{formatPostTime(u.createdAt)}</td>
+                      <td>{u.isSuperuser ? "管理员" : u.isSilenced ? "禁言中" : "正常"}</td>
+                      <td>
+                        {!u.isSuperuser ? (
+                          <button
+                            type="button"
+                            className="admin-btn"
+                            disabled={!authToken}
+                            onClick={() => onToggleSilence(u.id, Boolean(u.isSilenced))}
+                          >
+                            {u.isSilenced ? "解封" : "禁言"}
+                          </button>
+                        ) : (
+                          <span className="admin-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+          {!metricLoading && !metricError && activeMetric === "users" && !filteredUsers.length ? (
+            <p className="admin-muted">暂无用户</p>
+          ) : null}
+
+          {!metricLoading && !metricError && activeMetric === "silenced" ? (
+            <div className="admin-users-scroll">
+              <table className="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>邮箱</th>
+                    <th>注册时间</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSilencedUsers.length ? (
+                    filteredSilencedUsers.map((u) => (
+                        <tr key={`silenced-${u.id}`}>
+                          <td>{u.id}</td>
+                          <td>{u.username}</td>
+                          <td>{u.email}</td>
+                          <td>{formatPostTime(u.createdAt)}</td>
+                          <td>禁言中</td>
+                        </tr>
+                      ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5}>暂无禁言用户</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          {!metricLoading && !metricError && activeMetric === "posts" ? (
+            <div className="admin-users-scroll">
+              <table className="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>标题</th>
+                    <th>作者</th>
+                    <th>评论</th>
+                    <th>点赞</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPosts.length ? (
+                    filteredPosts.map((p) => (
+                      <tr key={`post-${p.id}`}>
+                        <td>{p.id}</td>
+                        <td>{p.title}</td>
+                        <td>{p.author}</td>
+                        <td>{p.stats?.comments ?? 0}</td>
+                        <td>{p.stats?.likes ?? 0}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5}>暂无帖子数据</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          {!metricLoading && !metricError && activeMetric === "comments" ? (
+            <div className="admin-users-scroll">
+              <table className="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>所属帖子</th>
+                    <th>作者</th>
+                    <th>发布时间</th>
+                    <th>内容</th>
+                    <th>点赞</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredComments.length ? (
+                    filteredComments.map((c) => (
+                      <tr key={`comment-${c.id}`}>
+                        <td>{c.id}</td>
+                        <td>{c.postTitle}</td>
+                        <td>{c.author}</td>
+                        <td>{formatPostTime(c.createdAt)}</td>
+                        <td>{c.content}</td>
+                        <td>{c.likes}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6}>暂无评论数据</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          {!metricLoading && !metricError && activeMetric === "likes" ? (
+            <div className="admin-users-scroll">
+              <table className="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>类型</th>
+                    <th>对象</th>
+                    <th>作者</th>
+                    <th>点赞数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLikes.length ? (
+                    filteredLikes.map((l, idx) => (
+                      <tr key={`like-${idx}`}>
+                        <td>{l.type}</td>
+                        <td>{l.title}</td>
+                        <td>{l.author}</td>
+                        <td>{l.likes}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4}>暂无点赞数据</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function MyPostsBoard({ authToken, currentUser, onNeedLogin, onBackHome, onOpenPost, onEditPost }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [items, setItems] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [deleteTargetPostId, setDeleteTargetPostId] = useState(null);
+  const [postView, setPostView] = useState(() => {
+    const st = typeof window !== "undefined" ? window.history.state || {} : {};
+    return st?.myPostsTab === "deleted" ? "deleted" : "active";
+  });
+
+  const normalizeError = useCallback((detail, fallbackText) => {
+    if (!detail) return fallbackText;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      const first = detail[0];
+      if (typeof first === "string") return first;
+      if (first && typeof first === "object" && typeof first.msg === "string") return first.msg;
+      return fallbackText;
+    }
+    if (typeof detail === "object" && typeof detail.msg === "string") return detail.msg;
+    return fallbackText;
+  }, []);
+
+  const loadMine = useCallback(async () => {
+    if (!authToken) {
+      setLoading(false);
+      setItems([]);
+      setError("请先登录");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/posts/mine?limit=200&include_deleted=true", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setItems(Array.isArray(data?.items) ? data.items : []);
+        return;
+      }
+
+      // 兼容后端尚未重启时 /posts/mine 被 /posts/{post_id} 捕获的情况：前端兜底筛我的帖子
+      const fallbackRes = await fetch("/api/posts?tag=全部&limit=100&offset=0", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const fallbackData = await fallbackRes.json();
+      if (!fallbackRes.ok) {
+        throw new Error(normalizeError(data?.detail, "加载失败"));
+      }
+      const all = Array.isArray(fallbackData?.items) ? fallbackData.items : [];
+      const mine = all.filter((p) => Number(p?.authorId) === Number(currentUser?.id));
+      setItems(mine);
+    } catch (e) {
+      setItems([]);
+      setError(e instanceof Error ? e.message : "加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [authToken, currentUser?.id, normalizeError]);
+
+  useEffect(() => {
+    loadMine();
+  }, [loadMine]);
+
+  const keyword = searchTerm.trim().toLowerCase();
+  const filteredItems = useMemo(
+    () =>
+      items
+        .filter((p) => (postView === "deleted" ? Boolean(p.deleted) : !Boolean(p.deleted)))
+        .filter((p) => {
+        if (!keyword) return true;
+        return (
+          String(p?.title || "").toLowerCase().includes(keyword) ||
+          String(p?.tag || "").toLowerCase().includes(keyword) ||
+          String(p?.excerpt || "").toLowerCase().includes(keyword) ||
+          String(p?.body || "").toLowerCase().includes(keyword)
+        );
+      }),
+    [items, keyword, postView],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.pathname !== myPostsPathname()) return;
+    const st = window.history.state || {};
+    window.history.replaceState({ ...st, myPostsTab: postView }, "", myPostsPathname());
+  }, [postView]);
+
+  const onDeleteMinePost = useCallback(
+    async (e, postId) => {
+      e.stopPropagation();
+      setDeleteTargetPostId(postId);
+    },
+    [],
+  );
+
+  const confirmDeleteMinePost = useCallback(async () => {
+    const postId = deleteTargetPostId;
+    if (!postId) return;
+    if (!authToken) {
+      setDeleteTargetPostId(null);
+      onNeedLogin?.();
+      return;
+    }
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || "删除失败");
+      setItems((prev) => prev.map((p) => (p.id === postId ? { ...p, deleted: true } : p)));
+      setDeleteTargetPostId(null);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "删除失败");
+    }
+  }, [authToken, deleteTargetPostId, onNeedLogin]);
+
+  const onRestoreMinePost = useCallback(
+    async (e, postId) => {
+      e.stopPropagation();
+      if (!authToken) {
+        onNeedLogin?.();
+        return;
+      }
+      try {
+        const res = await fetch(`/api/posts/${postId}/restore`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || "恢复失败");
+        setItems((prev) => prev.map((p) => (p.id === postId ? { ...p, ...(data?.item || {}), deleted: false } : p)));
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : "恢复失败");
+      }
+    },
+    [authToken, onNeedLogin],
+  );
+
+  return (
+    <div className="forum-page" lang="zh-CN">
+      <header className="forum-hero card">
+        <div>
+          <p className="forum-kicker">MY POSTS</p>
+          <h1 className="forum-title">作品中心</h1>
+          <p className="forum-sub">
+            {currentUser ? `@${currentUser.username} 的帖子` : "登录后可查看我的帖子"}
+          </p>
+        </div>
+        <div className="admin-page-actions">
+          {!authToken ? (
+            <button type="button" className="forum-new" onClick={() => onNeedLogin?.()}>
+              登录
+            </button>
+          ) : null}
+          <button type="button" className="forum-back" onClick={onBackHome}>
+            返回首页
+          </button>
+        </div>
+      </header>
+
+      <section className="my-posts-section">
+        <div className="my-posts-head">
+          <div className="my-post-tabs" role="tablist" aria-label="帖子视图">
+            <button
+              type="button"
+              className={"my-post-tab" + (postView === "active" ? " active" : "")}
+              onClick={() => setPostView("active")}
+            >
+              我发布的帖子
+            </button>
+            <button
+              type="button"
+              className={"my-post-tab" + (postView === "deleted" ? " active" : "")}
+              onClick={() => setPostView("deleted")}
+            >
+              最近删除的帖子
+            </button>
+          </div>
+          <label className="admin-search">
+            <img src={searchIcon} alt="" aria-hidden="true" />
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="搜索标题/标签/内容"
+            />
+          </label>
+        </div>
+        {loading ? <p className="admin-muted">加载中…</p> : null}
+        {!loading && error ? <p className="admin-muted">{error}</p> : null}
+        {!loading && !error && !items.length ? <p className="admin-muted">你还没有发布帖子</p> : null}
+        {!loading && !error && items.length && !filteredItems.length ? (
+          <p className="admin-muted">没有匹配的帖子</p>
+        ) : null}
+        {!loading && !error && filteredItems.length ? (
+          <div className="my-posts-list">
+            {filteredItems.map((p) => (
+              <article
+                key={`mine-${p.id}`}
+                className="card forum-post forum-post-btn my-post-item"
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenPost?.(p.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpenPost?.(p.id);
+                  }
+                }}
+              >
+                <button
+                  type="button"
+                  className="my-post-edit-btn"
+                  title="编辑帖子"
+                  aria-label="编辑帖子"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditPost?.(p, postView);
+                  }}
+                >
+                  <img src={editIcon} alt="" />
+                </button>
+                {postView === "deleted" ? (
+                  <button
+                    type="button"
+                    className="my-post-restore-btn"
+                    title="恢复帖子"
+                    aria-label="恢复帖子"
+                    onClick={(e) => onRestoreMinePost(e, p.id)}
+                  >
+                    <img src={undoIcon} alt="" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="my-post-delete-btn"
+                    title="删除帖子"
+                    aria-label="删除帖子"
+                    onClick={(e) => onDeleteMinePost(e, p.id)}
+                  >
+                    <img src={deleteIcon} alt="" />
+                  </button>
+                )}
+                <div className="forum-post-head">
+                  <span className="forum-tag">{p.tag}</span>
+                  {p.pinned ? <span className="forum-pinned">置顶</span> : null}
+                </div>
+                <h3 className="forum-post-title">{p.title}</h3>
+                <p className="forum-post-excerpt">{p.excerpt}</p>
+                <div className="forum-post-foot forum-post-foot--split">
+                  <span className="forum-stat forum-post-time">发布于 {formatPostTime(p.createdAt)}</span>
+                  <div className="forum-post-foot-right">
+                    <span className="forum-stat">
+                      <img src={previewOpenIcon} alt="浏览量" className="forum-stat-icon" />
+                      {p.stats?.views ?? 0}
+                    </span>
+                    <span className="forum-stat">
+                      <img src={commentIcon} alt="评论数" className="forum-stat-icon" />
+                      {p.stats?.comments ?? 0}
+                    </span>
+                    <span className="forum-stat">
+                      <img src={likeIcon} alt="点赞数" className="forum-stat-icon" />
+                      {p.stats?.likes ?? 0}
+                    </span>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {deleteTargetPostId ? (
+        <div className="auth-modal-mask" role="dialog" aria-modal="true" aria-label="删除帖子确认">
+          <div className="auth-modal">
+            <div className="auth-modal-head">
+              <h3>确认删除</h3>
+              <button type="button" className="auth-modal-close" onClick={() => setDeleteTargetPostId(null)}>
+                ×
+              </button>
+            </div>
+            <p className="admin-muted">删除后帖子会进入“最近删除的帖子”，30 天内可恢复。</p>
+            <div className="auth-actions delete-confirm-actions">
+              <button type="button" className="auth-switch" onClick={() => setDeleteTargetPostId(null)}>
+                取消
+              </button>
+              <button type="button" className="auth-submit" onClick={confirmDeleteMinePost}>
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RecentPostsBoard({ onBackHome, onOpenPost }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [items, setItems] = useState([]);
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const PAGE_SIZE = 100;
+
+  const normalizeError = useCallback((detail, fallbackText) => {
+    if (!detail) return fallbackText;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      const first = detail[0];
+      if (typeof first === "string") return first;
+      if (first && typeof first === "object" && typeof first.msg === "string") return first.msg;
+      return fallbackText;
+    }
+    if (typeof detail === "object" && typeof detail.msg === "string") return detail.msg;
+    return fallbackText;
+  }, []);
+
+  const loadRecent = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const offset = page * PAGE_SIZE;
+      const res = await fetch(`/api/posts?tag=全部&limit=${PAGE_SIZE}&offset=${offset}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(normalizeError(data?.detail, "加载失败"));
+      const rows = Array.isArray(data?.items) ? data.items : [];
+      rows.sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));
+      setItems(rows);
+      setHasNext(rows.length >= PAGE_SIZE);
+    } catch (e) {
+      setItems([]);
+      setError(e instanceof Error ? e.message : "加载失败");
+      setHasNext(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [normalizeError, page]);
+
+  useEffect(() => {
+    loadRecent();
+  }, [loadRecent]);
+
+  return (
+    <div className="forum-page" lang="zh-CN">
+      <header className="forum-hero card">
+        <div>
+          <p className="forum-kicker">RECENT DISCUSSIONS</p>
+          <h1 className="forum-title">最新讨论</h1>
+          <p className="forum-sub">按发帖时间排序（最新在上）</p>
+        </div>
+        <button type="button" className="forum-back" onClick={onBackHome}>
+          返回首页
+        </button>
+      </header>
+
+      <section className="my-posts-list">
+        {loading ? <article className="forum-post card">帖子加载中...</article> : null}
+        {!loading && error ? <article className="forum-post card">加载失败：{error}</article> : null}
+        {!loading && !error && !items.length ? (
+          <article className="forum-post card">暂无帖子</article>
+        ) : null}
+        {!loading &&
+          !error &&
+          items.map((post) => (
+            <button
+              key={post.id}
+              type="button"
+              className="forum-post forum-post-btn card"
+              onClick={() => onOpenPost?.(post.id)}
+            >
+              <div className="forum-post-head">
+                <span className="forum-tag">{post.tag}</span>
+                {post.pinned ? <span className="forum-pinned">置顶</span> : null}
+              </div>
+              <h3 className="forum-post-title">{post.title}</h3>
+              <p className="forum-post-excerpt">{post.excerpt}</p>
+              <div className="forum-post-foot forum-post-foot--split">
+                <div className="forum-post-foot-left">
+                  <span className="forum-author">@{post.author}</span>
+                  <span className="forum-stat forum-post-time">发布于 {formatPostTime(post.createdAt)}</span>
+                </div>
+                <div className="forum-post-foot-right">
+                  <span className="forum-stat">
+                    <img src={previewOpenIcon} alt="浏览量" className="forum-stat-icon" />
+                    {post.stats?.views ?? 0}
+                  </span>
+                  <span className="forum-stat">
+                    <img src={commentIcon} alt="评论数" className="forum-stat-icon" />
+                    {post.stats?.comments ?? 0}
+                  </span>
+                  <span className="forum-stat">
+                    <img src={likeIcon} alt="点赞数" className="forum-stat-icon" />
+                    {post.stats?.likes ?? 0}
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+      </section>
+      <div className="recent-pager">
+        <button
+          type="button"
+          className="recent-pager-btn"
+          disabled={loading || page <= 0}
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+        >
+          上一页
+        </button>
+        <span className="recent-pager-label">第 {page + 1} 页</span>
+        <button
+          type="button"
+          className="recent-pager-btn"
+          disabled={loading || !hasNext}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          下一页
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const FORUM_CATEGORIES = ["全部", "热门", "技术", "生活", "灵感", "闲聊"];
 const FORUM_TOPIC_TAGS = ["#学习打卡", "#效率工具", "#内容创作", "#Nooktalk设计", "#开发日志"];
 
@@ -286,11 +1246,16 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
   const [commentEditorOpen, setCommentEditorOpen] = useState(false);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [likeSubmitting, setLikeSubmitting] = useState(false);
+  const [commentLikeBusyId, setCommentLikeBusyId] = useState(null);
   const [composeOpen, setComposeOpen] = useState(() =>
     typeof window !== "undefined" ? isPostsComposePathname() : false,
   );
   const [composeSubmitting, setComposeSubmitting] = useState(false);
   const [composeError, setComposeError] = useState("");
+  const [composeContext, setComposeContext] = useState(() => {
+    const st = typeof window !== "undefined" ? window.history.state || {} : {};
+    return { from: st?.from || "posts", myPostsTab: st?.myPostsTab || "active", editPost: st?.editPost || null };
+  });
   const [composeForm, setComposeForm] = useState({
     title: "",
     tag: "闲聊",
@@ -300,6 +1265,8 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
   const composeEditorHostRef = useRef(null);
   const composeEditorRef = useRef(null);
   const commentInputRef = useRef(null);
+
+  const silenced = Boolean(currentUser?.isSilenced);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -349,7 +1316,7 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
     async (postId) => {
       setSelectedPostId(postId);
       setCommentEditorOpen(false);
-      history.pushState({ view: "posts-detail", postId }, "", postsDetailPathname(postId));
+      history.pushState({ view: "posts-detail", postId, from: "posts" }, "", postsDetailPathname(postId));
       await loadPostDetail(postId, true);
     },
     [loadPostDetail],
@@ -357,7 +1324,17 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
 
   const closePostDetail = useCallback(() => {
     setSelectedPostId(null);
-    history.pushState({ view: "posts" }, "", postsPathname());
+    const from = window.history.state?.from;
+    const myPostsTab = window.history.state?.myPostsTab || "active";
+    if (from === "my-posts") {
+      history.pushState({ view: "my-posts", myPostsTab }, "", myPostsPathname());
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } else if (from === "recent") {
+      history.pushState({ view: "recent" }, "", recentPathname());
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    } else {
+      history.pushState({ view: "posts" }, "", postsPathname());
+    }
     setDetail(null);
     setDetailError("");
     setCommentText("");
@@ -388,6 +1365,10 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
         onNeedLogin?.();
         return;
       }
+      if (silenced) {
+        window.alert("您已被禁言，暂时无法发帖与评论");
+        return;
+      }
       const title = composeForm.title.trim();
       const body = (composeEditorRef.current?.getMarkdown() || composeForm.body || "").trim();
       const topics = Array.from(
@@ -406,8 +1387,9 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
       setComposeError("");
       setComposeSubmitting(true);
       try {
-        const res = await fetch("/api/posts", {
-          method: "POST",
+        const isEdit = Boolean(composeContext.editPost?.id);
+        const res = await fetch(isEdit ? `/api/posts/${composeContext.editPost.id}` : "/api/posts", {
+          method: isEdit ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
@@ -420,13 +1402,19 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
           }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data?.detail || "发帖失败");
+        if (!res.ok) throw new Error(data?.detail || (isEdit ? "编辑失败" : "发帖失败"));
         setComposeOpen(false);
-        history.pushState({ view: "posts" }, "", postsPathname());
+        if (composeContext.from === "my-posts") {
+          history.pushState({ view: "my-posts", myPostsTab: composeContext.myPostsTab || "active" }, "", myPostsPathname());
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        } else {
+          history.pushState({ view: "posts" }, "", postsPathname());
+        }
+        setComposeContext({ from: "posts", myPostsTab: "active", editPost: null });
         setComposeForm({ title: "", tag: "闲聊", topicsText: "", body: "" });
         await loadPosts();
       } catch (err) {
-        setComposeError(err instanceof Error ? err.message : "发帖失败");
+        setComposeError(err instanceof Error ? err.message : "提交失败");
       } finally {
         setComposeSubmitting(false);
       }
@@ -437,9 +1425,12 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
       composeForm.tag,
       composeForm.title,
       composeForm.topicsText,
+      composeContext.editPost?.id,
+      composeContext.from,
       composeSubmitting,
       loadPosts,
       onNeedLogin,
+      silenced,
     ],
   );
 
@@ -470,7 +1461,16 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
 
   useEffect(() => {
     const onPop = () => {
-      setComposeOpen(isPostsComposePathname());
+      const open = isPostsComposePathname();
+      setComposeOpen(open);
+      if (open) {
+        const st = window.history.state || {};
+        setComposeContext({
+          from: st?.from || "posts",
+          myPostsTab: st?.myPostsTab || "active",
+          editPost: st?.editPost || null,
+        });
+      }
       const detailId = postsDetailIdFromPathname();
       setSelectedPostId(detailId);
       if (!detailId) {
@@ -482,6 +1482,19 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  useEffect(() => {
+    if (!composeOpen) return;
+    const ep = composeContext.editPost;
+    if (!ep) return;
+    setComposeForm({
+      title: ep.title || "",
+      tag: ep.tag || "闲聊",
+      topicsText: Array.isArray(ep.topics) ? ep.topics.map((t) => `#${t}`).join(" ") : "",
+      body: ep.body || "",
+    });
+    if (composeEditorRef.current) composeEditorRef.current.setMarkdown(ep.body || "");
+  }, [composeContext.editPost, composeOpen]);
 
   useEffect(() => {
     if (!selectedPostId) return;
@@ -549,6 +1562,10 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
         return;
       }
       if (commentSubmitting) return;
+      if (silenced) {
+        window.alert("您已被禁言，暂时无法发帖与评论");
+        return;
+      }
       const content = commentText.trim();
       if (!content) return;
       setCommentSubmitting(true);
@@ -599,12 +1616,20 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
         setCommentSubmitting(false);
       }
     },
-    [authToken, commentSubmitting, commentText, onNeedLogin, selectedPostId],
+    [authToken, commentSubmitting, commentText, onNeedLogin, selectedPostId, silenced],
   );
 
   const onToggleCommentEditor = useCallback(() => {
     if (!authToken) {
       onNeedLogin?.();
+      return;
+    }
+    if (silenced) {
+      window.alert("您已被禁言，暂时无法发帖与评论");
+      return;
+    }
+    if (detail?.item?.deleted) {
+      window.alert("请先恢复帖子后再评论");
       return;
     }
     setCommentEditorOpen((prev) => {
@@ -616,7 +1641,106 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
       }
       return next;
     });
-  }, [authToken, onNeedLogin]);
+  }, [authToken, detail?.item?.deleted, onNeedLogin, silenced]);
+
+  const onRestorePost = useCallback(async () => {
+    if (!selectedPostId || !authToken) return;
+    try {
+      const res = await fetch(`/api/posts/${selectedPostId}/restore`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || "恢复失败");
+      await loadPostDetail(selectedPostId, false);
+      await loadPosts();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "恢复失败");
+    }
+  }, [selectedPostId, authToken, loadPostDetail, loadPosts]);
+
+  const onDeleteComment = useCallback(
+    async (commentId) => {
+      if (!selectedPostId || !authToken) return;
+      if (!window.confirm("确定删除这条评论？")) return;
+      try {
+        const res = await fetch(`/api/posts/${selectedPostId}/comments/${commentId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || "删除失败");
+        setDetail((prev) =>
+          prev
+            ? {
+                ...prev,
+                comments: (prev.comments || []).filter((c) => c.id !== commentId),
+                item: prev.item
+                  ? {
+                      ...prev.item,
+                      stats: {
+                        ...prev.item.stats,
+                        comments: Number(data?.comments ?? prev.item.stats.comments),
+                      },
+                    }
+                  : prev.item,
+              }
+            : prev,
+        );
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === selectedPostId
+              ? {
+                  ...p,
+                  stats: {
+                    ...p.stats,
+                    comments: Number(data?.comments ?? p.stats.comments),
+                  },
+                }
+              : p,
+          ),
+        );
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : "删除失败");
+      }
+    },
+    [selectedPostId, authToken],
+  );
+
+  const onToggleCommentLike = useCallback(
+    async (commentId, likedByMe) => {
+      if (!selectedPostId) return;
+      if (!authToken) {
+        onNeedLogin?.();
+        return;
+      }
+      setCommentLikeBusyId(commentId);
+      try {
+        const method = likedByMe ? "DELETE" : "POST";
+        const res = await fetch(`/api/posts/${selectedPostId}/comments/${commentId}/like`, {
+          method,
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || "操作失败");
+        setDetail((prev) =>
+          prev
+            ? {
+                ...prev,
+                comments: (prev.comments || []).map((c) =>
+                  c.id === commentId ? { ...c, likedByMe: !likedByMe, likes: Number(data?.likes ?? c.likes) } : c,
+                ),
+              }
+            : prev,
+        );
+      } catch (e) {
+        window.alert(e instanceof Error ? e.message : "操作失败");
+      } finally {
+        setCommentLikeBusyId(null);
+      }
+    },
+    [selectedPostId, authToken, onNeedLogin],
+  );
 
   return (
     <div
@@ -662,9 +1786,14 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                   onNeedLogin?.();
                   return;
                 }
+                if (silenced) {
+                  window.alert("您已被禁言，暂时无法发帖与评论");
+                  return;
+                }
                 setComposeError("");
+                setComposeContext({ from: "posts", myPostsTab: "active", editPost: null });
                 setComposeOpen(true);
-                history.pushState({ view: "posts-compose" }, "", postsComposePathname());
+                history.pushState({ view: "posts-compose", from: "posts" }, "", postsComposePathname());
               }}
             >
               + 发布帖子
@@ -695,6 +1824,16 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                     <img src={closeIcon} alt="" className="forum-side-compose-close-icon" />
                   </button>
                 </div>
+                {detail.item?.deleted ? (
+                  <div className="forum-deleted-banner" role="status">
+                    <p>
+                      该帖已从公开列表中隐藏。作者或管理员可在此恢复；超过 30 天未恢复将由系统清理。
+                    </p>
+                    <button type="button" className="forum-btn-restore" onClick={onRestorePost}>
+                      恢复帖子
+                    </button>
+                  </div>
+                ) : null}
                 <h2 className="forum-detail-title">{detail.item.title}</h2>
                 {Array.isArray(detail.item.topics) && detail.item.topics.length > 0 ? (
                   <div className="forum-post-topics">
@@ -709,31 +1848,36 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                   className="forum-detail-body markdown-body"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(detail.item.body) }}
                 />
-                <div className="forum-post-foot forum-detail-foot">
-                  <span className="forum-author">@{detail.item.author}</span>
-                  <span className="forum-stat">
-                    <img src={previewOpenIcon} alt="浏览量" className="forum-stat-icon" />
-                    {detail.item.stats.views}
-                  </span>
-                  <button type="button" className="forum-stat forum-stat-btn" onClick={onToggleCommentEditor}>
-                    <img src={commentIcon} alt="评论数" className="forum-stat-icon" />
-                    {detail.item.stats.comments}
-                  </button>
-                  <button
-                    type="button"
-                    className={"forum-stat forum-stat-btn forum-stat-like" + (detail.likedByMe ? " active" : "")}
-                    onClick={onToggleLike}
-                    disabled={likeSubmitting}
-                  >
-                    <Heart
-                      size={14}
-                      className="forum-stat-icon forum-stat-icon--like"
-                      color={detail.likedByMe ? "#d73748" : "#6b7b74"}
-                      fill={detail.likedByMe ? "#d73748" : "none"}
-                      strokeWidth={2}
-                    />
-                    <span className="forum-stat-like-count">{detail.item.stats.likes}</span>
-                  </button>
+                <div className="forum-post-foot forum-detail-foot forum-post-foot--split">
+                  <div className="forum-post-foot-left">
+                    <span className="forum-author">@{detail.item.author}</span>
+                    <span className="forum-stat forum-post-time">发布于 {formatPostTime(detail.item.createdAt)}</span>
+                  </div>
+                  <div className="forum-post-foot-right">
+                    <span className="forum-stat">
+                      <img src={previewOpenIcon} alt="浏览量" className="forum-stat-icon" />
+                      {detail.item.stats.views}
+                    </span>
+                    <button type="button" className="forum-stat forum-stat-btn" onClick={onToggleCommentEditor}>
+                      <img src={commentIcon} alt="评论数" className="forum-stat-icon" />
+                      {detail.item.stats.comments}
+                    </button>
+                    <button
+                      type="button"
+                      className={"forum-stat forum-stat-btn forum-stat-like" + (detail.likedByMe ? " active" : "")}
+                      onClick={onToggleLike}
+                      disabled={likeSubmitting || Boolean(detail.item?.deleted)}
+                    >
+                      <Heart
+                        size={14}
+                        className="forum-stat-icon forum-stat-icon--like"
+                        color={detail.likedByMe ? "#d73748" : "#6b7b74"}
+                        fill={detail.likedByMe ? "#d73748" : "none"}
+                        strokeWidth={2}
+                      />
+                      <span className="forum-stat-like-count">{detail.item.stats.likes}</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="forum-comments">
                   <h3>评论（{detail.item.stats.comments}）</h3>
@@ -743,8 +1887,14 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                         ref={commentInputRef}
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        placeholder={authToken ? "写下你的评论..." : "登录后可评论"}
-                        disabled={commentSubmitting}
+                        placeholder={
+                          silenced ? "禁言期间不可评论"
+                          : detail.item?.deleted ? "恢复帖子后可评论"
+                          : authToken
+                            ? "写下你的评论..."
+                            : "登录后可评论"
+                        }
+                        disabled={commentSubmitting || silenced || Boolean(detail.item?.deleted)}
                         rows={3}
                       />
                       <div className="forum-comment-actions">
@@ -761,8 +1911,39 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                     {(detail.comments || []).length ? (
                       detail.comments.map((c) => (
                         <article key={c.id} className="forum-comment-item">
-                          <p className="forum-comment-author">@{c.author}</p>
+                          <div className="forum-comment-head">
+                            <p className="forum-comment-author">@{c.author}</p>
+                            <div className="forum-comment-actions-inline">
+                              <button
+                                type="button"
+                                className={"forum-comment-like" + (c.likedByMe ? " active" : "")}
+                                disabled={commentLikeBusyId === c.id || Boolean(detail.item?.deleted)}
+                                onClick={() => onToggleCommentLike(c.id, Boolean(c.likedByMe))}
+                                aria-label={c.likedByMe ? "取消赞" : "点赞"}
+                              >
+                                <Heart
+                                  size={12}
+                                  className="forum-stat-icon forum-stat-icon--like"
+                                  color={c.likedByMe ? "#d73748" : "#6b7b74"}
+                                  fill={c.likedByMe ? "#d73748" : "none"}
+                                  strokeWidth={2}
+                                />
+                                <span className="forum-comment-like-n">{c.likes ?? 0}</span>
+                              </button>
+                              {(currentUser?.id === c.authorId || currentUser?.isSuperuser) &&
+                              !detail.item?.deleted ? (
+                                <button
+                                  type="button"
+                                  className="forum-comment-del"
+                                  onClick={() => onDeleteComment(c.id)}
+                                >
+                                  删除
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
                           <p className="forum-comment-content">{c.content}</p>
+                          <p className="forum-comment-time">发布于 {formatPostTime(c.createdAt)}</p>
                         </article>
                       ))
                     ) : (
@@ -778,13 +1959,23 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
       ) : composeOpen ? (
         <section className="forum-compose-full card">
           <div className="forum-side-compose-head">
-            <h3>发布帖子</h3>
+            <h3>{composeContext.editPost ? "编辑帖子" : "发布帖子"}</h3>
             <button
               type="button"
               className="forum-side-compose-close"
               onClick={() => {
                 setComposeOpen(false);
-                history.pushState({ view: "posts" }, "", postsPathname());
+                if (composeContext.from === "my-posts") {
+                  history.pushState(
+                    { view: "my-posts", myPostsTab: composeContext.myPostsTab || "active" },
+                    "",
+                    myPostsPathname(),
+                  );
+                  window.dispatchEvent(new PopStateEvent("popstate"));
+                } else {
+                  history.pushState({ view: "posts" }, "", postsPathname());
+                }
+                setComposeContext({ from: "posts", myPostsTab: "active", editPost: null });
               }}
               disabled={composeSubmitting}
               aria-label="关闭发布面板"
@@ -844,7 +2035,7 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
             {composeError ? <p className="auth-error">{composeError}</p> : null}
             <div className="auth-actions forum-compose-actions">
               <button type="submit" className="auth-submit" disabled={composeSubmitting}>
-                {composeSubmitting ? "发布中..." : "发布帖子"}
+                {composeSubmitting ? "提交中..." : composeContext.editPost ? "保存修改" : "发布帖子"}
               </button>
             </div>
           </form>
@@ -881,20 +2072,25 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                     </div>
                   ) : null}
                   <p className="forum-post-excerpt">{post.excerpt}</p>
-                  <div className="forum-post-foot">
-                    <span className="forum-author">@{post.author}</span>
-                    <span className="forum-stat">
-                      <img src={previewOpenIcon} alt="浏览量" className="forum-stat-icon" />
-                      {post.stats.views}
-                    </span>
-                    <span className="forum-stat">
-                      <img src={commentIcon} alt="评论数" className="forum-stat-icon" />
-                      {post.stats.comments}
-                    </span>
-                    <span className="forum-stat">
-                      <img src={likeIcon} alt="点赞数" className="forum-stat-icon" />
-                      {post.stats.likes}
-                    </span>
+                  <div className="forum-post-foot forum-post-foot--split">
+                    <div className="forum-post-foot-left">
+                      <span className="forum-author">@{post.author}</span>
+                      <span className="forum-stat forum-post-time">发布于 {formatPostTime(post.createdAt)}</span>
+                    </div>
+                    <div className="forum-post-foot-right">
+                      <span className="forum-stat">
+                        <img src={previewOpenIcon} alt="浏览量" className="forum-stat-icon" />
+                        {post.stats.views}
+                      </span>
+                      <span className="forum-stat">
+                        <img src={commentIcon} alt="评论数" className="forum-stat-icon" />
+                        {post.stats.comments}
+                      </span>
+                      <span className="forum-stat">
+                        <img src={likeIcon} alt="点赞数" className="forum-stat-icon" />
+                        {post.stats.likes}
+                      </span>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -976,6 +2172,24 @@ function App() {
       if (activePage === "music") return;
       history.pushState({ view: "music" }, "", musicPathname());
       setActivePage("music");
+      return;
+    }
+    if (page === "recent") {
+      if (activePage === "recent") return;
+      history.pushState({ view: "recent" }, "", recentPathname());
+      setActivePage("recent");
+      return;
+    }
+    if (page === "my-posts") {
+      if (activePage === "my-posts") return;
+      history.pushState({ view: "my-posts" }, "", myPostsPathname());
+      setActivePage("my-posts");
+      return;
+    }
+    if (page === "admin") {
+      if (activePage === "admin") return;
+      history.pushState({ view: "admin" }, "", adminPathname());
+      setActivePage("admin");
       return;
     }
     if (page === "posts") {
@@ -1202,11 +2416,15 @@ function App() {
 
   const handleSecondaryCard = useCallback(async () => {
     if (isLoggedIn) {
-      window.alert("作品中心（占位）：后续会接入我的帖子、草稿与数据统计。");
+      if (currentUser?.isSuperuser) {
+        goToPage("admin");
+        return;
+      }
+      goToPage("my-posts");
       return;
     }
     openAuthModal("register");
-  }, [isLoggedIn, openAuthModal]);
+  }, [currentUser?.isSuperuser, goToPage, isLoggedIn, openAuthModal]);
 
   const userGreetingPool = useMemo(() => {
     if (!currentUser) return [];
@@ -1260,6 +2478,8 @@ function App() {
                   ? homePathname() || "/"
                   : item.id === "schedule"
                     ? schedulePathname()
+                    : item.id === "recent"
+                      ? recentPathname()
                     : "#";
               return (
                 <li key={item.id}>
@@ -1269,7 +2489,7 @@ function App() {
                     }
                     href={href}
                     onClick={(e) => {
-                      if (item.id === "home" || item.id === "schedule") {
+                      if (item.id === "home" || item.id === "schedule" || item.id === "recent") {
                         e.preventDefault();
                         goToPage(item.id);
                       } else {
@@ -1292,19 +2512,100 @@ function App() {
 
       {activePage === "schedule" ? (
         <div className="col-center col-center--fill col-center--weather col-center--schedule">
-          <ScheduleCalendar scheduleScopeKey={scheduleScopeKey} authToken={authToken} />
+          <div className="subpage-with-back">
+            <div className="subpage-main">
+              <div className="subpage-back-inside">
+                <button type="button" className="forum-back" onClick={() => goToPage("home")}>
+                  返回首页
+                </button>
+              </div>
+              <ScheduleCalendar scheduleScopeKey={scheduleScopeKey} authToken={authToken} />
+            </div>
+          </div>
         </div>
       ) : activePage === "weather" ? (
         <div className="col-center col-center--fill col-center--weather">
-          <WeatherWeek />
+          <div className="subpage-with-back">
+            <div className="subpage-main">
+              <div className="subpage-back-inside">
+                <button type="button" className="forum-back" onClick={() => goToPage("home")}>
+                  返回首页
+                </button>
+              </div>
+              <WeatherWeek />
+            </div>
+          </div>
         </div>
       ) : activePage === "time" ? (
         <div className="col-center col-center--fill col-center--weather col-center--time">
-          <TimeTools />
+          <div className="subpage-with-back">
+            <div className="subpage-main">
+              <div className="subpage-back-inside">
+                <button type="button" className="forum-back" onClick={() => goToPage("home")}>
+                  返回首页
+                </button>
+              </div>
+              <TimeTools />
+            </div>
+          </div>
         </div>
       ) : activePage === "music" ? (
         <div className="col-center col-center--fill col-center--weather col-center--music">
-          <MusicPlayer />
+          <div className="subpage-with-back">
+            <div className="subpage-main">
+              <div className="subpage-back-inside">
+                <button type="button" className="forum-back" onClick={() => goToPage("home")}>
+                  返回首页
+                </button>
+              </div>
+              <MusicPlayer />
+            </div>
+          </div>
+        </div>
+      ) : activePage === "recent" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--posts">
+          <RecentPostsBoard
+            onBackHome={() => goToPage("home")}
+            onOpenPost={(postId) => {
+              history.pushState({ view: "posts-detail", postId, from: "recent" }, "", postsDetailPathname(postId));
+              setActivePage("posts");
+            }}
+          />
+        </div>
+      ) : activePage === "admin" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--posts">
+          <AdminDashboard
+            authToken={authToken}
+            currentUser={currentUser}
+            onNeedLogin={() => openAuthModal("login")}
+            onBackHome={() => goToPage("home")}
+          />
+        </div>
+      ) : activePage === "my-posts" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--posts">
+          <MyPostsBoard
+            authToken={authToken}
+            currentUser={currentUser}
+            onNeedLogin={() => openAuthModal("login")}
+            onBackHome={() => goToPage("home")}
+            onOpenPost={(postId) => {
+              const st = window.history.state || {};
+              history.pushState(
+                { view: "posts-detail", postId, from: "my-posts", myPostsTab: st?.myPostsTab || "active" },
+                "",
+                postsDetailPathname(postId),
+              );
+              setActivePage("posts");
+            }}
+            onEditPost={(post, myPostsTab) => {
+              history.pushState(
+                { view: "posts-compose", from: "my-posts", myPostsTab: myPostsTab || "active", editPost: post },
+                "",
+                postsComposePathname(),
+              );
+              setActivePage("posts");
+            }}
+          />
         </div>
       ) : activePage === "posts" ? (
         <div className="col-center col-center--fill col-center--weather col-center--posts">
@@ -1367,7 +2668,7 @@ function App() {
                   {isLoggedIn ? "个人中心" : "登录"}
                 </button>
                 <button type="button" className="auth-quick-card" onClick={handleSecondaryCard}>
-                  {isLoggedIn ? "作品中心" : "注册"}
+                  {isLoggedIn ? (currentUser?.isSuperuser ? "管理后台" : "作品中心") : "注册"}
                 </button>
               </div>
             </div>

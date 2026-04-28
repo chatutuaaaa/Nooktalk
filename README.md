@@ -122,6 +122,9 @@ npm run dev
 
 - 三栏 Bento：侧栏（导航 + 天气小卡）/ 主内容 / 右侧（主界面含时钟、月历、音乐小卡等）
 - **帖子广场**：公开浏览；登录后发帖（富文本/Markdown 存储）、分类与话题、详情页点赞与评论、浏览量；发帖可用全宽编辑页，地址 `/posts/new`
+- **作品中心**：我的帖子列表、软删除列表切换、卡片内编辑/删除/恢复（删除后 30 天内可恢复）；编辑复用发帖页，返回路径保持来源页
+- **最新讨论**：独立子页，按发帖时间倒序；支持分页（上一页/下一页）
+- **管理后台**：全站统计、用户禁言/解封、分项数据视图、搜索筛选与时间戳展示
 - **日程与日历**（月/年）：登录用户日程与账号绑定存 PostgreSQL；访客仍用本地；农历提示、子页与左栏底对齐等布局
 - **未来天气**子页、**时间工具**子页
 - **音乐**：从 `music/` 经 API 拉取列表、HTML5 音频播放、首页与音乐页**共享**播放状态
@@ -137,6 +140,8 @@ npm run dev
 | `npm run build`   | 生产构建     |
 | `npm run preview` | 预览构建结果   |
 | `npm run lint`    | ESLint   |
+| `bash scripts/restart-nooktalk.sh` | 服务器一键重载 nginx 并重启 API |
+| `bash scripts/stop-nooktalk.sh` | 服务器一键停止 nginx 与 API |
 
 
 ---
@@ -178,7 +183,8 @@ npm run dev
 4. 访问 `http://<服务器公网IP>/` ；`curl -sS http://127.0.0.1:5055/api/health` 在服务器上应返回 `ok`。
 
 - 可改环境变量 `APP_DIR`、`REPO_URL`、`NODE_MAJOR` 重跑或换目录/Node 大版本。  
-- 改 `.env`、Nginx 或 `git pull` 后需要重启时，可 `sudo bash /var/www/nooktalk/scripts/restart-nooktalk.sh`（`nginx -t`、重载 Nginx、重启 `nooktalk-api`）。  
+- 改 `.env`、Nginx 或 `git pull` 后需要重启时，可 `sudo bash /var/www/nooktalk/scripts/restart-nooktalk.sh`（`nginx -t`、重载/启动 Nginx、重启 `nooktalk-api`）。  
+- 如需停服维护，可执行 `sudo bash /var/www/nooktalk/scripts/stop-nooktalk.sh` 一键停止。  
 - 静态资源目录：`/var/www/nooktalk/dist`；API 经 Nginx 走 `/api/`。  
 - 若 `bootstrap-server.sh` 尚未推送到 `main`，请用方式 B 或先 `git pull` 再执行仓库内脚本。  
 - 实际生效的 `nooktalk-api.service` 由 `bootstrap-server.sh` 写入；仓库里 `deploy/nooktalk-api.service` 仅作参考，运行用户以脚本解析为准（RHEL 多为 `nginx`）。

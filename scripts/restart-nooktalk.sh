@@ -6,12 +6,18 @@ set -euo pipefail
 echo "==> nginx 配置检查"
 nginx -t
 
-echo "==> 重载 nginx"
-systemctl reload nginx
+if systemctl is-active --quiet nginx 2>/dev/null; then
+  echo "==> 重载 nginx"
+  systemctl reload nginx
+else
+  echo "==> nginx 未运行，直接启动"
+  systemctl start nginx
+fi
 
 echo "==> 重启 nooktalk-api"
 systemctl restart nooktalk-api
 systemctl --no-pager -l status nooktalk-api || true
+systemctl --no-pager -l status nginx || true
 
 echo ""
 echo "==> 本机自检: curl -sS http://127.0.0.1:5055/api/health"
