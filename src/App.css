@@ -691,9 +691,32 @@ button.weather-card.weather-card--go:focus {
 }
 
 .forum-post-title {
-  margin: 8px 0 6px;
+  margin: 0;
   font-size: 17px;
   color: #213a2e;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.forum-post-title-row {
+  margin: 8px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.forum-post-tags-inline {
+  margin-left: auto;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 52%;
+  overflow: hidden;
 }
 
 .forum-post-excerpt {
@@ -705,6 +728,65 @@ button.weather-card.weather-card--go:focus {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* 列表摘要：完整 Markdown（保留换行，与详情一致），仅用高度裁切 */
+.forum-post-excerpt-md {
+  margin: 0;
+  color: #6b7f74;
+  font-size: 13px;
+  line-height: 1.55;
+  max-height: 5.75em;
+  overflow: hidden;
+  word-break: break-word;
+  min-height: 0;
+}
+
+.forum-post-excerpt-md h1,
+.forum-post-excerpt-md h2,
+.forum-post-excerpt-md h3,
+.forum-post-excerpt-md h4 {
+  font-size: 1.06em;
+  font-weight: 700;
+  margin: 0.15em 0 0.08em;
+  line-height: 1.35;
+  color: #294536;
+}
+
+.forum-post-excerpt-md p {
+  margin: 0.2em 0;
+}
+
+.forum-post-excerpt-md ul,
+.forum-post-excerpt-md ol {
+  margin: 0.25em 0;
+  padding-left: 1.15em;
+}
+
+.forum-post-excerpt-md blockquote {
+  margin: 0.35em 0;
+  padding-left: 0.65em;
+}
+
+.forum-post-excerpt-md pre,
+.forum-post-excerpt-md code {
+  font-size: 0.92em;
+}
+
+.forum-post-excerpt-md pre {
+  margin: 0.3em 0;
+  padding: 0.35em 0.45em;
+  overflow: auto;
+  max-height: 4.5em;
+}
+
+.forum-post-excerpt-md .md-code-block {
+  margin: 0.35em 0;
+}
+
+.forum-post-excerpt-md .md-code-block pre {
+  max-height: 3.6em;
+  padding: 6px 8px;
 }
 
 .forum-post-foot {
@@ -1384,7 +1466,12 @@ button.weather-card.weather-card--go:focus {
 
 .my-post-item {
   position: relative;
-  padding-right: 50px;
+}
+
+/* 仅正文摘要避让右侧操作按钮；标题与标签仍可占满整行左右布局 */
+.my-post-item > .forum-post-excerpt-md {
+  padding-right: 80px;
+  box-sizing: border-box;
 }
 
 .my-post-delete-btn {
@@ -1538,8 +1625,10 @@ button.weather-card.weather-card--go:focus {
 
 .forum-compose-full .auth-form,
 .forum-compose-full .auth-field,
+.forum-compose-full .forum-compose-field-rich,
 .forum-compose-full .auth-field input,
 .forum-compose-full .forum-compose-select,
+.forum-compose-full .forum-compose-selectbox,
 .forum-compose-full .forum-compose-editor-host {
   width: 100%;
   min-width: 0;
@@ -1549,11 +1638,40 @@ button.weather-card.weather-card--go:focus {
 .forum-compose-textarea {
   border: 1px solid rgba(188, 203, 223, 0.85);
   border-radius: 12px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.92);
   padding: 10px 12px;
   font-size: 14px;
   color: #22344a;
   font-family: inherit;
+}
+
+.forum-compose-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  font-weight: 600;
+  border-color: rgba(158, 198, 181, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(244, 252, 247, 0.92)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'%3E%3Cpath fill='%23456c57' d='m7 10 5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, right 10px center;
+  background-size: auto, 14px 14px;
+  padding-right: 34px;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease,
+    transform 0.08s ease;
+}
+
+.forum-compose-select:hover:not(:disabled) {
+  border-color: rgba(112, 176, 147, 0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 1px 0 rgba(62, 207, 139, 0.12);
 }
 
 .forum-compose-select:focus,
@@ -1561,6 +1679,130 @@ button.weather-card.weather-card--go:focus {
   outline: none;
   border-color: rgba(84, 145, 230, 0.9);
   box-shadow: 0 0 0 2px rgba(84, 145, 230, 0.15);
+}
+
+.forum-compose-select:focus {
+  border-color: rgba(76, 166, 128, 0.95);
+  box-shadow:
+    0 0 0 2px rgba(62, 207, 139, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+/* 分类下拉面板（原生 option，支持度受浏览器限制） */
+.forum-compose-select option {
+  background: #f3fbf6;
+  color: #1f3b2e;
+  padding: 8px 10px;
+}
+
+.forum-compose-select option:checked {
+  background: linear-gradient(180deg, #2f78d8, #2a66bd);
+  color: #fff;
+  font-weight: 600;
+}
+
+.forum-compose-select option:hover {
+  background: #dff3e6;
+  color: #173426;
+}
+
+.forum-compose-selectbox {
+  position: relative;
+}
+
+.forum-compose-selectbox.disabled {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.forum-compose-select-trigger {
+  width: 100%;
+  border: 1px solid rgba(158, 198, 181, 0.9);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(244, 252, 247, 0.92));
+  padding: 10px 12px;
+  padding-right: 34px;
+  font-size: 14px;
+  color: #22344a;
+  font-family: inherit;
+  font-weight: 600;
+  text-align: left;
+  line-height: 1.2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.08s ease;
+  position: relative;
+}
+
+.forum-compose-select-trigger:hover {
+  border-color: rgba(112, 176, 147, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 0 rgba(62, 207, 139, 0.12);
+}
+
+.forum-compose-selectbox.is-open .forum-compose-select-trigger,
+.forum-compose-select-trigger:focus-visible {
+  outline: none;
+  border-color: rgba(76, 166, 128, 0.95);
+  box-shadow: 0 0 0 2px rgba(62, 207, 139, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.forum-compose-select-caret {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-52%);
+  font-size: 12px;
+  color: #456c57;
+  transition: transform 0.16s ease;
+}
+
+.forum-compose-selectbox.is-open .forum-compose-select-caret {
+  transform: translateY(-52%) rotate(180deg);
+}
+
+.forum-compose-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 35;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(158, 198, 181, 0.88);
+  background: rgba(248, 253, 249, 0.98);
+  box-shadow: 0 10px 24px rgba(36, 78, 57, 0.16);
+  max-height: 208px;
+  overflow-y: auto;
+}
+
+.forum-compose-select-menu li {
+  margin: 0;
+  padding: 0;
+}
+
+.forum-compose-select-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 9px 10px;
+  text-align: left;
+  font: inherit;
+  color: #1f3b2e;
+  line-height: 1.2;
+}
+
+.forum-compose-select-item:hover {
+  background: rgba(62, 207, 139, 0.12);
+}
+
+.forum-compose-select-item.is-selected {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(84, 145, 230, 0.58);
+  box-shadow: inset 0 0 0 1px rgba(84, 145, 230, 0.08);
+  color: #2b66be;
+  font-weight: 600;
 }
 
 .forum-compose-textarea {
@@ -1595,6 +1837,7 @@ button.weather-card.weather-card--go:focus {
   max-height: 360px;
   overflow: auto;
 }
+
 
 .forum-compose-live-shell {
   position: relative;
@@ -1661,6 +1904,207 @@ button.weather-card.weather-card--go:focus {
   flex-wrap: wrap;
 }
 
+/* 行内代码 / 代码块：固定 SVG 图标（与 Toast UI 精灵图一致但更清晰可控） */
+.forum-compose-editor-host .toastui-editor-toolbar-icons.code {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23405570' d='m9.41 17.91-4.71-5.91 4.71-5.91-1.29-1.03-5.71 7.14-.08.09.08.09 5.71 7.14 1.29-1.03zm6.71-13.91-5.71 7.14-.08.09.08.09 5.71 7.14 1.29-1.03-4.71-5.91 4.71-5.91-1.29-1.03z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 17px 17px !important;
+}
+
+.forum-compose-editor-host .toastui-editor-toolbar-icons.codeblock {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23405570' fill-rule='evenodd' d='M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm1 2v14h12V5H6Zm2 3h8v2H8V8Zm0 4h8v2H8v-2Z'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 18px 18px !important;
+}
+
+/* Toast UI 对 .active 会把 background-position-y 移到精灵图第二行，这里保持 SVG 居中 */
+.forum-compose-editor-host .toastui-editor-toolbar-icons.code:not(:disabled).active,
+.forum-compose-editor-host .toastui-editor-toolbar-icons.codeblock:not(:disabled).active {
+  background-position: center !important;
+}
+
+/* 正文编辑区代码块：对齐「查看帖子」详情里 .md-code-block + .md-code-head 的视觉（github-dark 语义色） */
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block {
+  position: relative;
+  margin: 0.75em 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 66, 80, 0.75);
+  background: #0d1117;
+}
+
+/* 顶栏语言标签 + 编辑图标，对应详情页 .md-code-head / .md-code-lang */
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block::after {
+  content: attr(data-language);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: block;
+  box-sizing: border-box;
+  min-height: 32px;
+  padding: 7px 38px 7px 10px;
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #c7d3df;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  background-color: rgba(240, 246, 252, 0.08);
+  background-image: url("data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI1LjIuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IuugiOydtOyWtF8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiCgkgeT0iMHB4IiB2aWV3Qm94PSIwIDAgMzAgMzAiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDMwIDMwOyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGwtcnVsZTpldmVub2RkO2NsaXAtcnVsZTpldmVub2RkO2ZpbGw6IzU1NTU1NTt9Cjwvc3R5bGU+CjxnPgoJPGc+CgkJPGc+CgkJCTxnPgoJCQkJPGc+CgkJCQkJPHBhdGggY2xhc3M9InN0MCIgZD0iTTE1LjUsMTIuNWwyLDJMMTIsMjBoLTJ2LTJMMTUuNSwxMi41eiBNMTgsMTBsMiwybC0xLjUsMS41bC0yLTJMMTgsMTB6Ii8+CgkJCQk8L2c+CgkJCTwvZz4KCQk8L2c+Cgk8L2c+CjwvZz4KPC9zdmc+Cg==");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 18px 18px;
+  border-bottom: 1px solid rgba(240, 246, 252, 0.12);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block pre {
+  margin: 0;
+  padding: 42px 12px 12px;
+  border-radius: 0;
+  background-color: transparent !important;
+  overflow: auto;
+  max-width: 100%;
+}
+
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block pre.forum-ww-code-pre {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 0;
+  align-items: start;
+}
+
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block .forum-ww-code-gutter {
+  user-select: none;
+  pointer-events: none;
+  text-align: right;
+  color: #7f8c9a;
+  border-right: 1px solid rgba(240, 246, 252, 0.12);
+  padding-left: 6px;
+  padding-right: 8px;
+  margin-right: 10px;
+  display: block;
+}
+
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block .forum-ww-code-gutter > span {
+  display: block;
+  line-height: 1.55;
+}
+
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block pre code,
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block pre code.forum-ww-code-content {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  color: #c9d1d9;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  letter-spacing: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block .forum-ww-code-gutter {
+  font-size: 12px;
+}
+
+.forum-compose-editor-host .toastui-editor-contents .toastui-editor-ww-code-block ::selection {
+  background: rgba(56, 139, 253, 0.35);
+}
+
+/* WYSIWYG 代码块语言：下拉面板（覆盖 Toast 仅 100px 宽的浮动框样式） */
+.forum-compose-editor-host span.toastui-editor-ww-code-block-language.forum-code-lang-picker {
+  width: auto !important;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 24px));
+  height: auto !important;
+  right: auto !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(88, 98, 112, 0.95);
+  background: #161b22;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.12),
+    0 14px 32px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.forum-compose-editor-host .forum-code-lang-search {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #e6edf3;
+  background: #0d1117;
+  border: none;
+  border-bottom: 1px solid rgba(240, 246, 252, 0.12);
+  outline: none;
+}
+
+.forum-compose-editor-host .forum-code-lang-search::placeholder {
+  color: rgba(199, 211, 223, 0.55);
+}
+
+.forum-compose-editor-host .forum-code-lang-search:focus {
+  box-shadow: inset 0 0 0 1px rgba(84, 145, 230, 0.45);
+}
+
+.forum-compose-editor-host ul.forum-code-lang-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
+  font-size: 12px;
+}
+
+.forum-compose-editor-host ul.forum-code-lang-list li {
+  margin: 0;
+  padding: 7px 12px;
+  color: #c9d1d9;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.forum-compose-editor-host ul.forum-code-lang-list li:hover {
+  background: rgba(56, 139, 253, 0.15);
+}
+
+.forum-compose-editor-host ul.forum-code-lang-list li:active {
+  background: rgba(56, 139, 253, 0.26);
+}
+
 .markdown-body {
   color: #33483d;
   line-height: 1.7;
@@ -1724,6 +2168,99 @@ button.weather-card.weather-card--go:focus {
   background: transparent;
   color: inherit;
   padding: 0;
+}
+
+.markdown-body .md-code-block {
+  margin: 0.8em 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 66, 80, 0.75);
+  background: #0d1117;
+}
+
+.markdown-body .md-code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(240, 246, 252, 0.08);
+  border-bottom: 1px solid rgba(240, 246, 252, 0.12);
+}
+
+.markdown-body .md-code-lang {
+  font-size: 11px;
+  color: #c7d3df;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
+.markdown-body .md-code-copy {
+  width: 26px;
+  height: 22px;
+  border: 1px solid rgba(240, 246, 252, 0.18);
+  border-radius: 6px;
+  background: rgba(240, 246, 252, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.12s ease;
+}
+
+.markdown-body .md-code-copy:hover {
+  border-color: rgba(240, 246, 252, 0.35);
+  background: rgba(240, 246, 252, 0.16);
+}
+
+.markdown-body .md-code-copy:active {
+  transform: scale(0.96);
+}
+
+.markdown-body .md-code-copy[data-copied="1"] {
+  border-color: rgba(78, 207, 142, 0.8);
+  background: rgba(78, 207, 142, 0.2);
+}
+
+.markdown-body .md-code-copy img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  display: block;
+  filter: brightness(0) invert(0.88);
+}
+
+.markdown-body .md-code-block pre {
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 0;
+}
+
+.markdown-body .md-code-block code {
+  display: block;
+  padding: 0;
+}
+
+.markdown-body .md-code-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 0;
+  align-items: baseline;
+}
+
+.markdown-body .md-code-line-no {
+  user-select: none;
+  text-align: right;
+  padding: 0 10px 0 0;
+  color: #7f8c9a;
+  border-right: 1px solid rgba(240, 246, 252, 0.12);
+  margin-right: 12px;
+}
+
+.markdown-body .md-code-line-content {
+  white-space: pre;
+  display: block;
 }
 
 .markdown-body a {
@@ -1942,6 +2479,126 @@ button.weather-card.weather-card--go:focus {
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.auth-cancel {
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(186, 201, 222, 0.95);
+  background: #fff;
+  color: #395574;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-center {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.profile-center h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #1f3348;
+}
+
+.profile-center-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-center-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 2px solid rgba(145, 194, 169, 0.45);
+  object-fit: cover;
+  background: #eef4fb;
+}
+
+.profile-center-meta {
+  min-width: 0;
+}
+
+.profile-center-meta p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #678093;
+}
+
+.profile-center-role-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-role-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(177, 196, 219, 0.88);
+  color: #4f6683;
+  background: #fff;
+}
+
+.profile-role-chip.admin {
+  border-color: rgba(123, 167, 224, 0.9);
+  color: #2d5f9f;
+  background: rgba(224, 238, 255, 0.8);
+}
+
+.profile-role-chip.ok {
+  border-color: rgba(131, 194, 160, 0.92);
+  color: #2c7a53;
+  background: rgba(223, 243, 230, 0.85);
+}
+
+.profile-role-chip.muted {
+  border-color: rgba(224, 148, 148, 0.92);
+  color: #9e3c3c;
+  background: rgba(255, 236, 236, 0.9);
+}
+
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-stat-card {
+  border: 1px solid rgba(186, 201, 222, 0.85);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.76);
+  display: grid;
+  gap: 4px;
+}
+
+.profile-stat-card span {
+  font-size: 12px;
+  color: #6f8598;
+}
+
+.profile-stat-card strong {
+  font-size: 20px;
+  line-height: 1;
+  color: #243e59;
+}
+
+.profile-center-last {
+  margin: 0;
+  font-size: 13px;
+  color: #4f6a7e;
+}
+
+.profile-center-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .auth-recover {

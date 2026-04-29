@@ -16,8 +16,32 @@ import {
 } from "lucide-react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import hljs from "highlight.js";
+import "highlight.js/styles/github-dark.css";
+import Prism from "prismjs";
+import "prismjs/themes/prism-tomorrow.css";
+import "prismjs/components/prism-markup";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-jsx";
+import "prismjs/components/prism-tsx";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-bash";
+import "prismjs/components/prism-python";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-c";
+import "prismjs/components/prism-cpp";
+import "prismjs/components/prism-csharp";
+import "prismjs/components/prism-rust";
+import "prismjs/components/prism-php";
+import "prismjs/components/prism-sql";
+import "prismjs/components/prism-yaml";
 import Editor from "@toast-ui/editor";
 import "@toast-ui/editor/dist/toastui-editor.css";
+import codeSyntaxHighlight from "@toast-ui/editor-plugin-code-syntax-highlight";
+import { createWysiwygCodeBlockPlugin } from "./wysiwygCodeBlockView.js";
 import { getLunarDayLabel, getLunarMonthTitle } from "./lunarUtil";
 import { ScheduleCalendar } from "./ScheduleCalendar";
 import { MusicPlayer } from "./MusicPlayer";
@@ -32,6 +56,7 @@ import searchIcon from "./assets/search.svg";
 import deleteIcon from "./assets/delete.svg";
 import editIcon from "./assets/edit.svg";
 import undoIcon from "./assets/undo.svg";
+import copyOneIcon from "./assets/copy-one.svg";
 import "./App.css";
 
 const NAV = [
@@ -83,6 +108,10 @@ function myPostsPathname() {
   return new URL("my-posts", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
 }
 
+function profilePathname() {
+  return new URL("profile", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
 function postsComposePathname() {
   return new URL("posts/new", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
 }
@@ -115,6 +144,7 @@ function viewFromPathname() {
   if (p === timePathname()) return "time";
   if (p === musicPathname()) return "music";
   if (p === recentPathname()) return "recent";
+  if (p === profilePathname()) return "profile";
   if (p === adminPathname()) return "admin";
   if (p === myPostsPathname()) return "my-posts";
   if (p === postsPathname() || p === postsComposePathname() || postsDetailIdFromPathname(p)) return "posts";
@@ -153,17 +183,72 @@ function avatarFromUsername(username) {
   return `https://api.dicebear.com/9.x/thumbs/svg?seed=${seed}`;
 }
 
-function renderMarkdown(mdText) {
-  let normalized = String(mdText || "");
-  // Some WYSIWYG-originated content stores escaped markdown literals (\n, \#, \*\*...).
-  // Normalize those escapes so detail view can render markdown as expected.
+function normalizeMarkdownInput(input) {
+  let normalized = String(input || "");
   if (!normalized.includes("\n") && normalized.includes("\\n")) {
     normalized = normalized.replace(/\\n/g, "\n");
   }
   if (/\\[`*_#[\]()>-]/.test(normalized)) {
     normalized = normalized.replace(/\\([`*_#[\]()>-])/g, "$1");
   }
-  const raw = marked.parse(normalized, { gfm: true, breaks: true });
+  return normalized;
+}
+
+/** 与详情页同一套代码块高亮渲染，供全文与列表摘要共用 */
+function buildPostMarkdownRenderer() {
+  const escapeHtml = (value) =>
+    String(value || "").replace(/[&<>"']/g, (ch) => {
+      if (ch === "&") return "&amp;";
+      if (ch === "<") return "&lt;";
+      if (ch === ">") return "&gt;";
+      if (ch === '"') return "&quot;";
+      return "&#39;";
+    });
+  const renderer = new marked.Renderer();
+  renderer.code = ({ text, lang }) => {
+    const language = String(lang || "").trim().toLowerCase();
+    const languageLabel = language || "plain";
+    const source = String(text || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\t/g, "    ");
+    const encodedSource = encodeURIComponent(source);
+    const rows = source.split("\n");
+    const lineHtml = rows
+      .map((line, idx) => {
+        const highlighted =
+          language && hljs.getLanguage(language)
+            ? hljs.highlight(line || " ", { language, ignoreIllegals: true }).value
+            : escapeHtml(line || " ");
+        return `<span class="md-code-line"><span class="md-code-line-no">${idx + 1}</span><span class="md-code-line-content">${highlighted}</span></span>`;
+      })
+      .join("");
+    return `<div class="md-code-block"><div class="md-code-head"><span class="md-code-lang">${escapeHtml(languageLabel)}</span><button type="button" class="md-code-copy" data-code="${encodedSource}" aria-label="复制代码"><img src="${copyOneIcon}" alt="" /></button></div><pre><code class="hljs language-${escapeHtml(languageLabel)}">${lineHtml}</code></pre></div>`;
+  };
+  return renderer;
+}
+
+const postMarkdownRenderer = buildPostMarkdownRenderer();
+
+function renderMarkdown(mdText) {
+  const normalized = normalizeMarkdownInput(mdText);
+  const raw = marked.parse(normalized, { gfm: true, breaks: true, renderer: postMarkdownRenderer });
+  return DOMPurify.sanitize(raw);
+}
+
+/** 列表卡片摘要：保留换行并用完整 Markdown 解析（与详情一致），仅做长度截断 */
+function renderMarkdownSnippet(mdText, maxChars = 360) {
+  const normalized = normalizeMarkdownInput(mdText).trim();
+  if (!normalized.length) return "";
+  let snippet = normalized;
+  if (normalized.length > maxChars) {
+    let cut = normalized.slice(0, maxChars);
+    const lastNl = cut.lastIndexOf("\n");
+    if (lastNl > maxChars * 0.45) {
+      cut = cut.slice(0, lastNl);
+    }
+    snippet = `${cut.trimEnd()}…`;
+  }
+  const raw = marked.parse(snippet, { gfm: true, breaks: true, renderer: postMarkdownRenderer });
   return DOMPurify.sanitize(raw);
 }
 
@@ -1048,12 +1133,24 @@ function MyPostsBoard({ authToken, currentUser, onNeedLogin, onBackHome, onOpenP
                     <img src={deleteIcon} alt="" />
                   </button>
                 )}
-                <div className="forum-post-head">
-                  <span className="forum-tag">{p.tag}</span>
-                  {p.pinned ? <span className="forum-pinned">置顶</span> : null}
+                <div className="forum-post-title-row">
+                  <h3 className="forum-post-title">{p.title}</h3>
+                  <div className="forum-post-tags-inline">
+                    {Array.isArray(p.topics)
+                      ? p.topics.map((t) => (
+                          <span key={`mine-topic-${p.id}-${t}`} className="forum-topic-chip">
+                            #{t}
+                          </span>
+                        ))
+                      : null}
+                    {p.tag ? <span className="forum-tag">{p.tag}</span> : null}
+                    {p.pinned ? <span className="forum-pinned">置顶</span> : null}
+                  </div>
                 </div>
-                <h3 className="forum-post-title">{p.title}</h3>
-                <p className="forum-post-excerpt">{p.excerpt}</p>
+                <div
+                  className="markdown-body forum-post-excerpt-md"
+                  dangerouslySetInnerHTML={{ __html: renderMarkdownSnippet(p.body || p.excerpt || "") }}
+                />
                 <div className="forum-post-foot forum-post-foot--split">
                   <span className="forum-stat forum-post-time">发布于 {formatPostTime(p.createdAt)}</span>
                   <div className="forum-post-foot-right">
@@ -1098,6 +1195,177 @@ function MyPostsBoard({ authToken, currentUser, onNeedLogin, onBackHome, onOpenP
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ProfileCenterBoard({ authToken, currentUser, onNeedLogin, onBackHome, onOpenMyPosts, onLogout }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [summary, setSummary] = useState({
+    postCount: 0,
+    activePostCount: 0,
+    deletedPostCount: 0,
+    totalViews: 0,
+    totalLikes: 0,
+    totalComments: 0,
+    latestPostAt: 0,
+  });
+
+  useEffect(() => {
+    if (!authToken || !currentUser) {
+      setLoading(false);
+      setSummary({
+        postCount: 0,
+        activePostCount: 0,
+        deletedPostCount: 0,
+        totalViews: 0,
+        totalLikes: 0,
+        totalComments: 0,
+        latestPostAt: 0,
+      });
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    (async () => {
+      try {
+        const res = await fetch("/api/posts?include_deleted=true", {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.detail || "个人中心数据加载失败");
+        const all = Array.isArray(data?.items) ? data.items : [];
+        const mine = all.filter((p) => Number(p?.authorId) === Number(currentUser.id));
+        const next = mine.reduce(
+          (acc, p) => {
+            const views = Number(p?.stats?.views || 0);
+            const likes = Number(p?.stats?.likes || 0);
+            const comments = Number(p?.stats?.comments || 0);
+            const createdAt = Number(p?.createdAt || 0);
+            return {
+              postCount: acc.postCount + 1,
+              activePostCount: acc.activePostCount + (p?.isDeleted ? 0 : 1),
+              deletedPostCount: acc.deletedPostCount + (p?.isDeleted ? 1 : 0),
+              totalViews: acc.totalViews + views,
+              totalLikes: acc.totalLikes + likes,
+              totalComments: acc.totalComments + comments,
+              latestPostAt: Math.max(acc.latestPostAt, createdAt),
+            };
+          },
+          {
+            postCount: 0,
+            activePostCount: 0,
+            deletedPostCount: 0,
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            latestPostAt: 0,
+          },
+        );
+        if (!cancelled) setSummary(next);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "个人中心数据加载失败");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authToken, currentUser]);
+
+  if (!authToken || !currentUser) {
+    return (
+      <div className="subpage-with-back">
+        <div className="subpage-main">
+          <div className="subpage-back-inside">
+            <button type="button" className="forum-back" onClick={onBackHome}>
+              返回首页
+            </button>
+          </div>
+          <section className="profile-center card">
+            <h3>个人中心</h3>
+            <p>请先登录后查看个人数据。</p>
+            <button type="button" className="auth-submit" onClick={onNeedLogin}>
+              去登录
+            </button>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="subpage-with-back">
+      <div className="subpage-main">
+        <div className="subpage-back-inside">
+          <button type="button" className="forum-back" onClick={onBackHome}>
+            返回首页
+          </button>
+        </div>
+        <section className="profile-center card">
+          <div className="profile-center-head">
+            <img
+              className="profile-center-avatar"
+              src={currentUser.avatarUrl || avatarFromUsername(currentUser.username)}
+              alt=""
+            />
+            <div className="profile-center-meta">
+              <h3>{currentUser.username}</h3>
+              <p>@{currentUser.username}</p>
+              <p>{currentUser.email || "未绑定邮箱"}</p>
+            </div>
+          </div>
+          <div className="profile-center-role-row">
+            <span className={"profile-role-chip" + (currentUser.isSuperuser ? " admin" : "")}>
+              {currentUser.isSuperuser ? "管理员账号" : "普通账号"}
+            </span>
+            <span className={"profile-role-chip" + (currentUser.isSilenced ? " muted" : " ok")}>
+              {currentUser.isSilenced ? "当前状态：禁言中" : "当前状态：正常"}
+            </span>
+          </div>
+          {error ? <p className="auth-error">{error}</p> : null}
+          <div className="profile-stats-grid">
+            <article className="profile-stat-card">
+              <span>帖子总数</span>
+              <strong>{loading ? "…" : summary.postCount}</strong>
+            </article>
+            <article className="profile-stat-card">
+              <span>公开帖子</span>
+              <strong>{loading ? "…" : summary.activePostCount}</strong>
+            </article>
+            <article className="profile-stat-card">
+              <span>总浏览</span>
+              <strong>{loading ? "…" : summary.totalViews}</strong>
+            </article>
+            <article className="profile-stat-card">
+              <span>总点赞</span>
+              <strong>{loading ? "…" : summary.totalLikes}</strong>
+            </article>
+            <article className="profile-stat-card">
+              <span>总评论</span>
+              <strong>{loading ? "…" : summary.totalComments}</strong>
+            </article>
+            <article className="profile-stat-card">
+              <span>回收站帖子</span>
+              <strong>{loading ? "…" : summary.deletedPostCount}</strong>
+            </article>
+          </div>
+          <p className="profile-center-last">
+            最近发帖：{summary.latestPostAt ? formatPostTime(summary.latestPostAt) : "暂无记录"}
+          </p>
+          <div className="profile-center-actions">
+            <button type="button" className="auth-submit" onClick={onOpenMyPosts}>
+              查看我的帖子
+            </button>
+            <button type="button" className="auth-cancel" onClick={onLogout}>
+              退出登录
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
@@ -1176,12 +1444,24 @@ function RecentPostsBoard({ onBackHome, onOpenPost }) {
               className="forum-post forum-post-btn card"
               onClick={() => onOpenPost?.(post.id)}
             >
-              <div className="forum-post-head">
-                <span className="forum-tag">{post.tag}</span>
-                {post.pinned ? <span className="forum-pinned">置顶</span> : null}
+              <div className="forum-post-title-row">
+                <h3 className="forum-post-title">{post.title}</h3>
+                <div className="forum-post-tags-inline">
+                  {Array.isArray(post.topics)
+                    ? post.topics.map((t) => (
+                        <span key={`${post.id}-topic-${t}`} className="forum-topic-chip">
+                          #{t}
+                        </span>
+                      ))
+                    : null}
+                  {post.tag ? <span className="forum-tag">{post.tag}</span> : null}
+                  {post.pinned ? <span className="forum-pinned">置顶</span> : null}
+                </div>
               </div>
-              <h3 className="forum-post-title">{post.title}</h3>
-              <p className="forum-post-excerpt">{post.excerpt}</p>
+              <div
+                className="markdown-body forum-post-excerpt-md"
+                dangerouslySetInnerHTML={{ __html: renderMarkdownSnippet(post.body || post.excerpt || "") }}
+              />
               <div className="forum-post-foot forum-post-foot--split">
                 <div className="forum-post-foot-left">
                   <span className="forum-author">@{post.author}</span>
@@ -1262,9 +1542,31 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
     topicsText: "",
     body: "",
   });
+  const [composeTagOpen, setComposeTagOpen] = useState(false);
+  const composeTagRef = useRef(null);
   const composeEditorHostRef = useRef(null);
   const composeEditorRef = useRef(null);
   const commentInputRef = useRef(null);
+  const composeTagOptions = useMemo(
+    () => FORUM_CATEGORIES.filter((x) => !["全部", "热门"].includes(x)),
+    [],
+  );
+
+  useEffect(() => {
+    if (!composeTagOpen) return;
+    const onDocPointer = (ev) => {
+      if (composeTagRef.current?.contains(ev.target)) return;
+      setComposeTagOpen(false);
+    };
+    document.addEventListener("mousedown", onDocPointer, true);
+    return () => document.removeEventListener("mousedown", onDocPointer, true);
+  }, [composeTagOpen]);
+
+  useEffect(() => {
+    if (!composeOpen) {
+      setComposeTagOpen(false);
+    }
+  }, [composeOpen]);
 
   const silenced = Boolean(currentUser?.isSilenced);
 
@@ -1446,6 +1748,17 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
       hideModeSwitch: true,
       initialValue: composeForm.body || "",
       placeholder: "在这里输入正文，所见即所得；发布时会自动保存为 Markdown。",
+      usageStatistics: false,
+      plugins: [[codeSyntaxHighlight, { highlighter: Prism }], createWysiwygCodeBlockPlugin()],
+    });
+
+    editor.on("change", () => {
+      try {
+        const next = editor.getMarkdown();
+        setComposeForm((prev) => (prev.body === next ? prev : { ...prev, body: next }));
+      } catch {
+        // noop
+      }
     });
 
     composeEditorRef.current = editor;
@@ -1552,6 +1865,31 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
       setLikeSubmitting(false);
     }
   }, [authToken, detail?.likedByMe, likeSubmitting, onNeedLogin, selectedPostId]);
+
+  const onMarkdownBodyClick = useCallback(async (e) => {
+    const copyBtn = e.target instanceof Element ? e.target.closest(".md-code-copy") : null;
+    if (!copyBtn) return;
+    const encoded = copyBtn.getAttribute("data-code") || "";
+    const content = decodeURIComponent(encoded);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(content);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = content;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      copyBtn.dataset.copied = "1";
+      window.setTimeout(() => {
+        delete copyBtn.dataset.copied;
+      }, 1200);
+    } catch {
+      window.alert("复制失败，请手动复制");
+    }
+  }, []);
 
   const onSubmitComment = useCallback(
     async (e) => {
@@ -1846,6 +2184,7 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                 ) : null}
                 <div
                   className="forum-detail-body markdown-body"
+                  onClick={onMarkdownBodyClick}
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(detail.item.body) }}
                 />
                 <div className="forum-post-foot forum-detail-foot forum-post-foot--split">
@@ -1998,20 +2337,58 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
             </label>
             <label className="auth-field">
               <span>分类</span>
-              <select
-                className="forum-compose-select"
-                value={composeForm.tag}
-                onChange={(e) =>
-                  setComposeForm((prev) => ({ ...prev, tag: e.target.value }))
+              <div
+                className={
+                  "forum-compose-selectbox" +
+                  (composeTagOpen && !composeSubmitting ? " is-open" : "") +
+                  (composeSubmitting ? " disabled" : "")
                 }
-                disabled={composeSubmitting}
+                ref={composeTagRef}
               >
-                {FORUM_CATEGORIES.filter((x) => !["全部", "热门"].includes(x)).map((x) => (
-                  <option key={x} value={x}>
-                    {x}
-                  </option>
-                ))}
-              </select>
+                <button
+                  type="button"
+                  className="forum-compose-select-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded={composeTagOpen && !composeSubmitting}
+                  aria-label="选择帖子分类"
+                  disabled={composeSubmitting}
+                  onClick={() => setComposeTagOpen((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      setComposeTagOpen(false);
+                      return;
+                    }
+                    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setComposeTagOpen(true);
+                    }
+                  }}
+                >
+                  <span>{composeForm.tag}</span>
+                  <span className="forum-compose-select-caret" aria-hidden="true">
+                    ▾
+                  </span>
+                </button>
+                {composeTagOpen && !composeSubmitting ? (
+                  <ul className="forum-compose-select-menu" role="listbox" aria-label="帖子分类选项">
+                    {composeTagOptions.map((x) => (
+                      <li key={x} role="option" aria-selected={composeForm.tag === x}>
+                        <button
+                          type="button"
+                          className={"forum-compose-select-item" + (composeForm.tag === x ? " is-selected" : "")}
+                          onClick={() => {
+                            setComposeForm((prev) => ({ ...prev, tag: x }));
+                            setComposeTagOpen(false);
+                          }}
+                        >
+                          {x}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             </label>
             <label className="auth-field">
               <span>话题标签（可选）</span>
@@ -2025,13 +2402,13 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                 placeholder="#学习打卡 #效率工具（空格分隔，最多 8 个）"
               />
             </label>
-            <label className="auth-field">
-              <span>正文（Markdown）</span>
+            <div className="auth-field forum-compose-field-rich" aria-labelledby="compose-editor-label">
+              <span id="compose-editor-label">正文（Markdown）</span>
               <div
                 ref={composeEditorHostRef}
                 className={"forum-compose-editor-host" + (composeSubmitting ? " disabled" : "")}
               />
-            </label>
+            </div>
             {composeError ? <p className="auth-error">{composeError}</p> : null}
             <div className="auth-actions forum-compose-actions">
               <button type="submit" className="auth-submit" disabled={composeSubmitting}>
@@ -2057,21 +2434,24 @@ function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
                   className="forum-post forum-post-btn card"
                   onClick={() => openPostDetail(post.id)}
                 >
-                  <div className="forum-post-head">
-                    <span className="forum-tag">{post.tag}</span>
-                    {post.pinned ? <span className="forum-pinned">置顶</span> : null}
-                  </div>
-                  <h3 className="forum-post-title">{post.title}</h3>
-                  {Array.isArray(post.topics) && post.topics.length > 0 ? (
-                    <div className="forum-post-topics">
-                      {post.topics.map((t) => (
-                        <span key={`${post.id}-topic-${t}`} className="forum-topic-chip">
-                          #{t}
-                        </span>
-                      ))}
+                  <div className="forum-post-title-row">
+                    <h3 className="forum-post-title">{post.title}</h3>
+                    <div className="forum-post-tags-inline">
+                      {Array.isArray(post.topics)
+                        ? post.topics.map((t) => (
+                            <span key={`${post.id}-topic-${t}`} className="forum-topic-chip">
+                              #{t}
+                            </span>
+                          ))
+                        : null}
+                      {post.tag ? <span className="forum-tag">{post.tag}</span> : null}
+                      {post.pinned ? <span className="forum-pinned">置顶</span> : null}
                     </div>
-                  ) : null}
-                  <p className="forum-post-excerpt">{post.excerpt}</p>
+                  </div>
+                  <div
+                    className="markdown-body forum-post-excerpt-md"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdownSnippet(post.body || post.excerpt || "") }}
+                  />
                   <div className="forum-post-foot forum-post-foot--split">
                     <div className="forum-post-foot-left">
                       <span className="forum-author">@{post.author}</span>
@@ -2184,6 +2564,12 @@ function App() {
       if (activePage === "my-posts") return;
       history.pushState({ view: "my-posts" }, "", myPostsPathname());
       setActivePage("my-posts");
+      return;
+    }
+    if (page === "profile") {
+      if (activePage === "profile") return;
+      history.pushState({ view: "profile" }, "", profilePathname());
+      setActivePage("profile");
       return;
     }
     if (page === "admin") {
@@ -2403,16 +2789,13 @@ function App() {
     }
   }, [authSubmitting, doRegister, registerForm]);
 
-  const handlePrimaryCard = useCallback(async () => {
+  const handlePrimaryCard = useCallback(() => {
     if (isLoggedIn) {
-      const ok = window.confirm("个人中心（占位）\n\n点击“确定”将退出登录，方便你继续测试。");
-      if (ok) {
-        await doLogout();
-      }
+      goToPage("profile");
       return;
     }
     openAuthModal("login");
-  }, [doLogout, isLoggedIn, openAuthModal]);
+  }, [goToPage, isLoggedIn, openAuthModal]);
 
   const handleSecondaryCard = useCallback(async () => {
     if (isLoggedIn) {
@@ -2579,6 +2962,17 @@ function App() {
             currentUser={currentUser}
             onNeedLogin={() => openAuthModal("login")}
             onBackHome={() => goToPage("home")}
+          />
+        </div>
+      ) : activePage === "profile" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--posts">
+          <ProfileCenterBoard
+            authToken={authToken}
+            currentUser={currentUser}
+            onNeedLogin={() => openAuthModal("login")}
+            onBackHome={() => goToPage("home")}
+            onOpenMyPosts={() => goToPage("my-posts")}
+            onLogout={doLogout}
           />
         </div>
       ) : activePage === "my-posts" ? (
