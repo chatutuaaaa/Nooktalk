@@ -19,6 +19,8 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    # 自定义头像：https 链接或前端压缩后的 data:image/*;base64,；为空时前端用默认头像
+    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), default=utcnow
     )
@@ -26,6 +28,25 @@ class User(Base):
     # 管理员 / 禁言（禁言仅限发帖与评论）
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_silenced: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+
+class Notification(Base):
+    """站内消息：他人点赞/评论自己的帖子。"""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(32), index=True)  # post_like | post_comment
+    actor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"), index=True)
+    comment_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    post_title: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    snippet: Mapped[str] = mapped_column(Text, default="", server_default="")
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), default=utcnow, index=True
+    )
 
 
 class ScheduleEvent(Base):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import func, or_, select
@@ -25,6 +25,13 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=6, max_length=128)
 
 
+class PatchProfileIn(BaseModel):
+    """更新头像：支持 https 图片链接或 data:image/*;base64,（本地上传经前端压缩）。"""
+
+    model_config = ConfigDict(populate_by_name=True)
+    avatar_url: str | None = Field(default=None, max_length=400_000, alias="avatarUrl")
+
+
 class AuthOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -32,10 +39,12 @@ class AuthOut(BaseModel):
 
 
 def _public_user(u: User) -> dict:
+    av = getattr(u, "avatar_url", None)
     return {
         "id": u.id,
         "username": u.username,
         "email": u.email,
+        "avatarUrl": (av.strip() if isinstance(av, str) and av.strip() else None),
         "isSuperuser": getattr(u, "is_superuser", False),
         "isSilenced": getattr(u, "is_silenced", False),
     }
@@ -148,6 +157,45 @@ def get_current_admin(user: User = Depends(get_current_user)) -> User:
 
 @router.get("/me")
 def me(user: User = Depends(get_current_user)) -> dict:
+    return {"ok": True, "user": _public_user(user)}
+
+
+def _store_avatar_value(s: str) -> str:
+    """校验并返回写入库的字符串。"""
+    s = s.strip()
+    if len(s) > 400_000:
+        raise HTTPException(status_code=400, detail="头像数据过大，请选用较小的图片")
+    if s.startswith("https://") or s.startswith("http://"):
+        return s[:8192]
+    data_prefixes = (
+        "data:image/jpeg;base64,",
+        "data:image/jpg;base64,",
+        "data:image/png;base64,",
+        "data:image/webp;base64,",
+        "data:image/gif;base64,",
+    )
+    if any(s.startswith(p) for p in data_prefixes):
+        return s
+    raise HTTPException(
+        status_code=400,
+        detail="头像需为 https 图片链接，或使用本地上传的 JPG / PNG / WebP / GIF",
+    )
+
+
+@router.patch("/profile")
+def patch_profile(
+    payload: PatchProfileIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    if payload.avatar_url is not None:
+        s = payload.avatar_url.strip()
+        if not s:
+            user.avatar_url = None
+        else:
+            user.avatar_url = _store_avatar_value(s)
+        db.commit()
+        db.refresh(user)
     return {"ok": True, "user": _public_user(user)}
 
 

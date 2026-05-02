@@ -20,6 +20,9 @@ def ensure_community_columns(engine: Engine) -> None:
         "CREATE INDEX IF NOT EXISTS ix_post_comments_deleted_at ON post_comments (deleted_at)",
         """ALTER TABLE posts ADD COLUMN IF NOT EXISTS topics VARCHAR(500) DEFAULT ''""",
         "ALTER TABLE posts ALTER COLUMN body TYPE TEXT USING body::TEXT",
+        """ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(1024)""",
+        # 头像可存 data URL，放宽为 TEXT（已有列时尝试改类型）
+        """ALTER TABLE users ALTER COLUMN avatar_url TYPE TEXT USING avatar_url::TEXT""",
     ]
     with engine.begin() as conn:
         for sql in stmts:

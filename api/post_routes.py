@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .auth_routes import get_current_user, get_current_user_writer, get_optional_user
 from .db import get_db
-from .models import CommentLike, Post, PostComment, PostLike, User
+from .models import CommentLike, Notification, Post, PostComment, PostLike, User
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -129,14 +130,126 @@ def list_posts(
     return {"ok": True, "items": items}
 
 
+@router.get("/hot")
+def list_hot_posts_by_views(
+    limit: int = Query(default=5, ge=1, le=20),
+    db: Session = Depends(get_db),
+) -> dict:
+    """未删除帖子中按总浏览量降序的 TOP N。"""
+    rows = db.scalars(
+        select(Post)
+        .where(Post.deleted_at.is_(None))
+        .order_by(desc(Post.views), desc(Post.id))
+        .limit(limit)
+    ).all()
+    if not rows:
+        return {"ok": True, "items": []}
+    author_ids = {r.author_id for r in rows}
+    authors = {
+        u.id: u.username
+        for u in db.scalars(select(User).where(User.id.in_(author_ids))).all()
+    }
+    items = [_post_out(r, authors.get(r.author_id, "未知用户")) for r in rows]
+    return {"ok": True, "items": items}
+
+
+def _likes_received_on_my_posts(db: Session, user: User, limit: int) -> dict:
+    """他人对我帖子的每一次点赞（含自己点赞自己的记录），按时间倒序。"""
+    rows = db.execute(
+        select(
+            PostLike.id.label("like_id"),
+            PostLike.user_id,
+            PostLike.created_at,
+            Post.id.label("post_id"),
+            Post.title,
+            Post.deleted_at,
+        )
+        .select_from(PostLike)
+        .join(Post, Post.id == PostLike.post_id)
+        .where(Post.author_id == user.id)
+        .order_by(desc(PostLike.created_at))
+        .limit(limit)
+    ).all()
+    if not rows:
+        return {"ok": True, "items": []}
+    liker_ids = {r.user_id for r in rows}
+    names = {
+        u.id: u.username
+        for u in db.scalars(select(User).where(User.id.in_(liker_ids))).all()
+    }
+    items = [
+        {
+            "id": int(r.like_id),
+            "actorUsername": names.get(r.user_id, "用户"),
+            "postId": int(r.post_id),
+            "postTitle": (r.title or "")[:200],
+            "postDeleted": r.deleted_at is not None,
+            "createdAt": _to_ms(r.created_at),
+        }
+        for r in rows
+    ]
+    return {"ok": True, "items": items}
+
+
+def _comments_received_on_my_posts(db: Session, user: User, limit: int) -> dict:
+    """他人（及自己）在我帖子下的评论，未删除的评论，按时间倒序。"""
+    rows = db.execute(
+        select(
+            PostComment.id.label("comment_id"),
+            PostComment.user_id,
+            PostComment.content,
+            PostComment.created_at,
+            Post.id.label("post_id"),
+            Post.title,
+            Post.deleted_at,
+        )
+        .select_from(PostComment)
+        .join(Post, Post.id == PostComment.post_id)
+        .where(Post.author_id == user.id, PostComment.deleted_at.is_(None))
+        .order_by(desc(PostComment.created_at))
+        .limit(limit)
+    ).all()
+    if not rows:
+        return {"ok": True, "items": []}
+    author_ids = {r.user_id for r in rows}
+    names = {
+        u.id: u.username
+        for u in db.scalars(select(User).where(User.id.in_(author_ids))).all()
+    }
+    items = []
+    for r in rows:
+        raw = (r.content or "").strip()
+        snippet = raw[:160] + ("…" if len(raw) > 160 else "")
+        items.append(
+            {
+                "id": int(r.comment_id),
+                "actorUsername": names.get(r.user_id, "用户"),
+                "postId": int(r.post_id),
+                "postTitle": (r.title or "")[:200],
+                "postDeleted": r.deleted_at is not None,
+                "snippet": snippet,
+                "createdAt": _to_ms(r.created_at),
+            }
+        )
+    return {"ok": True, "items": items}
+
+
 @router.get("/mine")
 def list_my_posts(
     include_deleted: bool = Query(default=False),
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    interaction: Literal["likes", "comments"] | None = Query(
+        default=None,
+        description="为 likes/comments 时返回收到的赞/收到的评论明细，与帖子列表互斥",
+    ),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
+    if interaction == "likes":
+        return _likes_received_on_my_posts(db, user, limit)
+    if interaction == "comments":
+        return _comments_received_on_my_posts(db, user, limit)
     q = (
         select(Post)
         .where(Post.author_id == user.id)
@@ -147,6 +260,25 @@ def list_my_posts(
     rows = db.scalars(q.offset(offset).limit(limit)).all()
     items = [_post_out(r, user.username) for r in rows]
     return {"ok": True, "items": items}
+
+
+# 兼容旧路径（部分反向代理对 /mine/xxx 子路径处理异常时，请用 /mine?interaction=likes）
+@router.get("/mine/received-likes")
+def list_likes_received_on_my_posts_alias(
+    limit: int = Query(default=100, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    return _likes_received_on_my_posts(db, user, limit)
+
+
+@router.get("/mine/received-comments")
+def list_comments_received_on_my_posts_alias(
+    limit: int = Query(default=100, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    return _comments_received_on_my_posts(db, user, limit)
 
 
 @router.get("/{post_id}")
@@ -369,6 +501,18 @@ def like_post(post_id: int, user: User = Depends(get_current_user), db: Session 
     if existing is None:
         db.add(PostLike(post_id=post_id, user_id=user.id))
         post.likes_count += 1
+        if post.author_id != user.id:
+            db.add(
+                Notification(
+                    user_id=post.author_id,
+                    kind="post_like",
+                    actor_id=user.id,
+                    post_id=post.id,
+                    comment_id=None,
+                    post_title=(post.title or "")[:200],
+                    snippet="赞了您的帖子",
+                )
+            )
         db.commit()
         db.refresh(post)
     return {"ok": True, "liked": True, "likes": post.likes_count}
@@ -406,7 +550,21 @@ def create_comment(
         raise HTTPException(status_code=400, detail="评论不能为空")
     comment = PostComment(post_id=post_id, user_id=user.id, content=content)
     db.add(comment)
+    db.flush()
     post.comments_count += 1
+    if post.author_id != user.id:
+        preview = content[:240] + ("…" if len(content) > 240 else "")
+        db.add(
+            Notification(
+                user_id=post.author_id,
+                kind="post_comment",
+                actor_id=user.id,
+                post_id=post.id,
+                comment_id=comment.id,
+                post_title=(post.title or "")[:200],
+                snippet=preview,
+            )
+        )
     db.commit()
     db.refresh(comment)
     db.refresh(post)

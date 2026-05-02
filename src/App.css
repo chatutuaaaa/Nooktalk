@@ -74,6 +74,14 @@
   min-height: 0;
 }
 
+/* 个人中心：不按帖子页规则纵向撑满，高度随内容，便于与左侧「导航+天气」下沿视觉对齐 */
+.col-center--posts > .forum-page.profile-forum-page {
+  flex: 0 1 auto;
+  height: auto;
+  width: 100%;
+  min-height: 0;
+}
+
 /* 日程日历：同左栏等底 */
 .col-center--schedule > * {
   flex: 1 1 0;
@@ -661,6 +669,9 @@ button.weather-card.weather-card--go:focus {
   text-align: left;
   border: 1px solid var(--card-border);
   cursor: pointer;
+  /* 与 <article class="card"> 列表一致：去掉系统按钮外观，否则内部代码块等子元素圆角易被压成直角 */
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .forum-post-btn:hover {
@@ -782,6 +793,14 @@ button.weather-card.weather-card--go:focus {
 
 .forum-post-excerpt-md .md-code-block {
   margin: 0.35em 0;
+}
+
+/* 摘要内 fenced 代码块：与作品中心列表区（.my-posts-list 12px）及卡片观感一致的圆角 */
+.markdown-body.forum-post-excerpt-md .md-code-block {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 66, 80, 0.75);
+  background: #0d1117;
 }
 
 .forum-post-excerpt-md .md-code-block pre {
@@ -946,6 +965,38 @@ button.weather-card.weather-card--go:focus {
 .forum-side-card li {
   font-size: 12px;
   color: #4b6155;
+  line-height: 1.4;
+}
+
+.forum-hot-board {
+  list-style-position: outside;
+}
+
+.forum-hot-board-link {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: #2f5141;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.forum-hot-board-link:hover {
+  color: #1a7a4a;
+  text-decoration: underline;
+}
+
+.forum-hot-board-empty {
+  margin: 0;
+  font-size: 12px;
+  color: #7f9087;
   line-height: 1.4;
 }
 
@@ -2589,6 +2640,163 @@ button.weather-card.weather-card--go:focus {
   color: #243e59;
 }
 
+/* 个人中心统计卡：可点击跳转「我的帖子」，悬停与全站 .card 一致的上浮动效 */
+.profile-stat-card--action {
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  z-index: 0;
+  transform: translateY(0) scale(1);
+  transform-origin: center center;
+  transition:
+    box-shadow 0.3s cubic-bezier(0.34, 1.2, 0.64, 1),
+    transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1),
+    border-color 0.25s ease;
+}
+
+.profile-stat-card--action:hover {
+  z-index: 1;
+  border-color: rgba(62, 207, 139, 0.45);
+  transform: translateY(-5px) scale(1.015);
+  box-shadow:
+    0 12px 28px rgba(20, 60, 40, 0.1),
+    0 28px 56px rgba(20, 60, 40, 0.14),
+    0 0 0 1px rgba(62, 207, 139, 0.12);
+}
+
+.profile-stat-card--action:active {
+  transform: translateY(-2px) scale(1.008);
+  transition-duration: 0.12s;
+}
+
+.profile-stat-card--action:focus-visible {
+  outline: none;
+  z-index: 2;
+  border-color: rgba(62, 207, 139, 0.45);
+  transform: translateY(-3px) scale(1.01);
+  box-shadow:
+    0 8px 18px rgba(20, 60, 40, 0.08),
+    0 0 0 2px rgba(62, 207, 139, 0.45);
+}
+
+/* 收到的赞/评论：与作品中心一致——展示区 my-posts-list 内滚动，底与左栏对齐（依赖 .col-center--posts > * 与 bento 等高） */
+.forum-page.profile-engagement-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  gap: 14px;
+}
+
+.profile-engagement-section.my-posts-section {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.profile-engagement-head {
+  flex: 0 0 auto;
+}
+
+.profile-engagement-head-text {
+  margin: 0;
+  max-width: 100%;
+  line-height: 1.45;
+}
+
+.profile-engagement-scroll.my-posts-list {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.profile-engagement-scroll .profile-engagement-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  overflow: hidden;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.profile-engagement-toprow {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 6px;
+  min-width: 0;
+}
+
+.profile-engagement-toprow .profile-engagement-mainline {
+  margin: 0;
+}
+
+.profile-engagement-mainline--shrink {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-engagement-mainline {
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #243e59;
+  font-weight: 500;
+}
+
+.profile-engagement-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7b74;
+  vertical-align: middle;
+  border-radius: 6px;
+  background: rgba(107, 123, 116, 0.12);
+}
+
+.profile-engagement-snippet {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #4f6a7e;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 评论卡：摘要与主标题同一行，靠右单行省略 */
+.profile-engagement-snippet--end {
+  margin: 0;
+  flex: 0 1 44%;
+  max-width: 44%;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+}
+
+.profile-engagement-time {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #6b7b74;
+  flex: 0 0 auto;
+}
+
 .profile-center-last {
   margin: 0;
   font-size: 13px;
@@ -2599,6 +2807,315 @@ button.weather-card.weather-card--go:focus {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+/* 个人中心：不强制撑满视口，高度随内容，避免右侧提醒区高于左侧「导航+天气」卡片下沿 */
+.profile-forum-page {
+  min-height: 0;
+}
+
+.profile-toolbar .profile-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.profile-logout-btn {
+  border-color: rgba(215, 55, 72, 0.35) !important;
+  color: #9a3545 !important;
+}
+
+.profile-forum-body {
+  min-height: 0;
+}
+
+/* 个人中心主栏：各卡片直接叠在页面背景上，不用 forum-feed 整块滚动底 */
+.profile-main-stack {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.profile-hero-card {
+  min-height: 0;
+  max-height: none;
+}
+
+.profile-hero-head {
+  position: relative;
+  padding-right: 100px;
+}
+
+.profile-hero-avatar {
+  width: 64px;
+  height: 64px;
+}
+
+.profile-hero-name {
+  margin: 0;
+  font-size: 20px;
+  color: #1f3428;
+}
+
+.profile-hero-edit {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.profile-last-line {
+  margin-top: 4px;
+}
+
+.profile-side .forum-side-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-side > .profile-notify-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-notify-stack > .profile-notify-card {
+  flex: 1 1 0;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-notify-card .profile-notify-list {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+}
+
+.profile-notify-card .profile-notify-foot {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.profile-notify-like-line {
+  display: block;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+.profile-notify-btn--comment {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.profile-notify-comment-top {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.profile-notify-comment-main {
+  margin: 0;
+  font-size: 12px;
+  color: #2f5141;
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+.profile-notify-snippet-end {
+  flex: 0 1 44%;
+  max-width: 44%;
+  margin: 0;
+  text-align: right;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #6b7f74;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-notify-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.profile-notify-head h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #244233;
+}
+
+.profile-notify-markall {
+  border: none;
+  background: none;
+  color: #2a7a52;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.profile-notify-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #7f9087;
+  line-height: 1.45;
+}
+
+.profile-notify-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+}
+
+.profile-notify-item.unread .profile-notify-btn {
+  border-color: rgba(62, 207, 139, 0.55);
+  background: rgba(235, 255, 243, 0.65);
+}
+
+.profile-notify-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(167, 184, 173, 0.55);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #fff;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  font: inherit;
+}
+
+.profile-notify-btn:hover {
+  border-color: rgba(62, 207, 139, 0.45);
+}
+
+.profile-notify-kind {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1f704a;
+  letter-spacing: 0.06em;
+}
+
+.profile-notify-actor {
+  font-size: 12px;
+  color: #2f5141;
+  font-weight: 600;
+}
+
+.profile-notify-title {
+  font-size: 12px;
+  color: #294536;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-notify-snippet {
+  font-size: 11px;
+  color: #6b7f74;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.profile-notify-time {
+  font-size: 11px;
+  color: #8a9d94;
+}
+
+.profile-notify-foot {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #8a9d94;
+}
+
+.profile-edit-modal {
+  position: relative;
+  max-width: 420px;
+}
+
+.profile-avatar-preview-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 14px;
+}
+
+.profile-avatar-preview-img {
+  width: 88px;
+  height: 88px;
+  border-radius: 18px;
+  object-fit: cover;
+  border: 1px solid rgba(160, 180, 168, 0.45);
+  box-shadow: 0 6px 14px rgba(40, 73, 58, 0.1);
+  background: #f4faf6;
+}
+
+.profile-avatar-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.profile-avatar-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.profile-avatar-file-btn {
+  font-weight: 600;
+}
+
+.profile-avatar-file-note {
+  margin: 0;
+  font-size: 12px;
+}
+
+.profile-login-card {
+  max-width: 420px;
+}
+
+.profile-login-btn {
+  margin-top: 12px;
+  width: 100%;
 }
 
 .auth-recover {

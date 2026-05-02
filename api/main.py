@@ -19,6 +19,7 @@ from .auth_routes import router as auth_router
 from .schedule_routes import router as schedule_router
 from .post_routes import router as post_router
 from .admin_routes import router as admin_router
+from .notification_routes import router as notification_router
 from .purge_job import run_purge_once
 from .db import engine
 from .models import Base
@@ -38,6 +39,7 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(schedule_router, prefix="/api")
 app.include_router(post_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(notification_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
