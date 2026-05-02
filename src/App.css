@@ -75,7 +75,8 @@
 }
 
 /* 个人中心：不按帖子页规则纵向撑满，高度随内容，便于与左侧「导航+天气」下沿视觉对齐 */
-.col-center--posts > .forum-page.profile-forum-page {
+/* 收到的赞/评论页需与作品中心一样占满中间栏，否则内层 height:100% + flex:1 会塌成一条缝 */
+.col-center--posts > .forum-page.profile-forum-page:not(.profile-engagement-page) {
   flex: 0 1 auto;
   height: auto;
   width: 100%;
