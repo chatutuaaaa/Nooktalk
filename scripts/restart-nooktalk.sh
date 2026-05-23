@@ -20,4 +20,7 @@ systemctl --no-pager -l status nooktalk-api || true
 systemctl --no-pager -l status nginx || true
 
 echo ""
-echo "==> 本机自检: curl -sS http://127.0.0.1:5055/api/health"
+echo "==> 本机自检 API: curl -sS http://127.0.0.1:5055/api/health"
+if [ -f /etc/nginx/ssl/nooktalk/www.nooktalk.top.pem ]; then
+  echo "==> 本机自检 HTTPS: curl -sS https://127.0.0.1/api/health -k"
+fi

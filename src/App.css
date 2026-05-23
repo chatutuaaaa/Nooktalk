@@ -3588,6 +3588,335 @@ button.calendar-card.calendar-card--go:focus {
   }
 }
 
+/* 推荐分享 */
+.share-page {
+  overflow: auto;
+  padding-bottom: 8px;
+}
+
+.share-actions {
+  padding: 14px 16px;
+}
+
+.share-actions-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.share-site-url {
+  margin: 0;
+  font-size: 13px;
+  color: #4a6356;
+  word-break: break-all;
+  flex: 1 1 200px;
+}
+
+.share-actions-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.share-action-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d4a3b;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.18s ease;
+}
+
+.share-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(40, 73, 58, 0.12);
+}
+
+.share-action-btn--primary {
+  background: linear-gradient(135deg, #3ecf8b, #2fb67a);
+  border-color: transparent;
+  color: #fff;
+}
+
+.share-copy-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #2f7a52;
+  font-weight: 600;
+}
+
+.share-section {
+  padding: 14px 16px 16px;
+}
+
+.share-section-head h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #1f3428;
+}
+
+.share-section-head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.share-link-grid {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.share-link-card {
+  border: 1px solid rgba(160, 180, 168, 0.35);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 100%;
+  background: #fafcf9;
+}
+
+.share-link-card.tone-github {
+  border-color: rgba(15, 23, 42, 0.15);
+}
+.share-link-card.tone-bili {
+  border-color: rgba(251, 114, 153, 0.35);
+}
+.share-link-card.tone-xhs {
+  border-color: rgba(227, 36, 43, 0.25);
+}
+
+.share-link-card-body h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #1f3428;
+}
+
+.share-link-card-body p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.share-link-url {
+  margin: 6px 0 0 !important;
+  font-size: 11px !important;
+  color: #8a9d92 !important;
+  word-break: break-all;
+}
+
+.share-link-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.share-link-btn {
+  flex: 1;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2d4a3b;
+  cursor: pointer;
+  text-align: center;
+  line-height: 32px;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.share-link-btn:hover {
+  transform: translateY(-1px);
+}
+
+.share-link-btn--ghost {
+  background: #f4f8f5;
+}
+
+.share-tip-card {
+  margin-top: 2px;
+}
+
+/* 精品专栏 */
+.columns-page {
+  overflow: auto;
+  padding-bottom: 8px;
+}
+
+.columns-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.column-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.column-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.column-card-glyph {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.column-card-head h2 {
+  margin: 0;
+  font-size: 17px;
+  color: #1f3428;
+}
+
+.column-card-head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #4a6356;
+}
+
+.column-card-body {
+  padding: 10px 14px 6px;
+  flex: 1;
+}
+
+.column-empty {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.column-post-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.column-post-link {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  color: #1f3428;
+  font: inherit;
+}
+
+.column-post-link:hover .column-post-title {
+  color: #2f7a52;
+}
+
+.column-post-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: #edf7f0;
+  color: #2d5c44;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.column-post-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.column-post-meta {
+  margin: 2px 0 0 30px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.column-card-foot {
+  padding: 8px 14px 14px;
+}
+
+.column-more-btn {
+  width: 100%;
+  border: 1px dashed rgba(62, 207, 139, 0.45);
+  background: #f7fcf9;
+  border-radius: 12px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d5c44;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.column-more-btn:hover {
+  background: #edf7f0;
+  transform: translateY(-1px);
+}
+
+.columns-topics {
+  padding: 14px 16px;
+}
+
+.columns-topics h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.columns-topics-hint {
+  margin: 6px 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.columns-topics-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.forum-topic-chip--static {
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .columns-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 600px) {
   .bento {
     padding: 16px 12px 28px;
@@ -3595,5 +3924,9 @@ button.calendar-card.calendar-card--go:focus {
 
   .digital-time {
     font-size: 36px;
+  }
+
+  .share-link-grid {
+    grid-template-columns: 1fr;
   }
 }

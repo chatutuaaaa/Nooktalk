@@ -200,27 +200,20 @@ systemctl enable nooktalk-api
 systemctl restart nooktalk-api
 systemctl --no-pager -l status nooktalk-api || true
 
-# ---------- Nginx 站点（RHEL 用 conf.d；Debian/Ubuntu 用 sites-*）----------
-install_nginx_config() {
-  if [ "$PKG" = rhel ]; then
-    # 系统包常带 default.conf，与 nooktalk 里 server_name _ 会冲突；移出 conf.d 以免被 include
-    if [ -f /etc/nginx/conf.d/default.conf ]; then
-      mv -f /etc/nginx/conf.d/default.conf "/root/nginx-default.conf.bak.$(date +%s)" 2>/dev/null || true
-    fi
-    cp -f "$APP_DIR/deploy/nginx-nooktalk.conf" /etc/nginx/conf.d/nooktalk.conf
-    echo "==> 已写 /etc/nginx/conf.d/nooktalk.conf"
-  else
-    mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
-    if [ -e /etc/nginx/sites-enabled/default ]; then
-      rm -f /etc/nginx/sites-enabled/default
-      echo "==> 已去掉 sites-enabled/default，避免与 nooktalk 重复 default_server / server_name _"
-    fi
-    cp -f "$APP_DIR/deploy/nginx-nooktalk.conf" /etc/nginx/sites-available/nooktalk
-    ln -sf /etc/nginx/sites-available/nooktalk /etc/nginx/sites-enabled/nooktalk
-    echo "==> 已写 sites-available/nooktalk 并链到 sites-enabled"
-  fi
-}
-install_nginx_config
+# ---------- Nginx 站点（有证书则 HTTPS，否则先 HTTP）----------
+# shellcheck source=ssl-common.sh
+source "$(dirname "${BASH_SOURCE[0]}")/ssl-common.sh"
+mkdir -p "$APP_DIR/deploy/ssl"
+USE_HTTPS=0
+if ssl_certs_ready "$APP_DIR"; then
+  install_ssl_files_for_app "$APP_DIR"
+  USE_HTTPS=1
+  open_firewall_https "$PKG"
+else
+  echo "!!! 未在 $APP_DIR/deploy/ssl/ 发现证书，Nginx 暂用 HTTP。"
+  echo "!!! 上传 www.nooktalk.top.pem / .key 后执行: sudo bash $APP_DIR/scripts/install-ssl.sh"
+fi
+copy_nginx_site_config "$APP_DIR" "$USE_HTTPS" "$PKG"
 
 # ---------- SELinux（RHEL 系：Nginx 反代本机 5055 需打开布尔值）----------
 if command -v getenforce &>/dev/null && [ "$(getenforce 2>/dev/null)" = "Enforcing" ]; then
@@ -230,15 +223,19 @@ if command -v getenforce &>/dev/null && [ "$(getenforce 2>/dev/null)" = "Enforci
   fi
 fi
 
-# ---------- firewalld：放行 HTTP ----------
+# ---------- firewalld：放行 HTTP（HTTPS 在启用证书时由 open_firewall_https 处理）----------
 if [ "$PKG" = rhel ] && systemctl is-active --quiet firewalld 2>/dev/null; then
   if firewall-cmd --permanent --add-service=http --zone=public 2>/dev/null; then
     :
   else
     firewall-cmd --permanent --add-service=http || true
   fi
+  if [ "$USE_HTTPS" = "1" ]; then
+    firewall-cmd --permanent --add-service=https --zone=public 2>/dev/null \
+      || firewall-cmd --permanent --add-service=https || true
+  fi
   firewall-cmd --reload
-  echo "==> firewalld 已放行 http"
+  echo "==> firewalld 已放行 http$([ "$USE_HTTPS" = 1 ] && echo " 与 https")"
 fi
 
 systemctl enable nginx 2>/dev/null || true
@@ -251,6 +248,10 @@ fi
 
 echo ""
 echo "==> 改 .env 后执行: systemctl restart nooktalk-api"
-echo "==> 访问: http://$(hostname -I 2>/dev/null | awk '{print $1}')/  或 公网 IP"
+if [ "$USE_HTTPS" = "1" ]; then
+  echo "==> 访问: https://www.nooktalk.top/"
+else
+  echo "==> 访问: http://$(hostname -I 2>/dev/null | awk '{print $1}')/  （装好证书后改 https）"
+fi
 echo "==> 本机: curl -sS http://127.0.0.1:5055/api/health"
-echo "==> 云厂商安全组/防火墙需放行 80 端口（及可选 443）"
+echo "==> 云厂商安全组需放行 80、443（启用 HTTPS 时）"

@@ -182,6 +182,24 @@ npm run dev
   - 本地曲库：把音乐文件 scp 到 `/var/www/nooktalk/music/`，将目录属主与运行用户一致（Debian 系多为 `www-data`，RHEL 系经脚本多为 `nginx`），例如 `chown -R nginx:nginx /var/www/nooktalk/music` 或 `chown -R www-data:www-data /var/www/nooktalk/music`（脚本已建目录，并在收尾对整站做了 `chown`）。
 4. 访问 `http://<服务器公网IP>/` ；`curl -sS http://127.0.0.1:5055/api/health` 在服务器上应返回 `ok`。
 
+### HTTPS（域名 www.nooktalk.top）
+
+1. 在本机解压证书商提供的 `*_nginx.zip`，得到 `www.nooktalk.top.pem` 与 `www.nooktalk.top.key`（例如在 `E:\证书`）。
+2. 上传到服务器（先确保已有 `/var/www/nooktalk` 目录）：
+   ```bash
+   scp www.nooktalk.top.pem root@<服务器IP>:/var/www/nooktalk/deploy/ssl/
+   scp www.nooktalk.top.key root@<服务器IP>:/var/www/nooktalk/deploy/ssl/
+   ```
+3. 在服务器执行：
+   ```bash
+   sudo bash /var/www/nooktalk/scripts/install-ssl.sh
+   ```
+4. 云安全组放行 **443**；域名 `www.nooktalk.top` / `nooktalk.top` 的 DNS **A 记录**指向服务器公网 IP。
+5. 浏览器访问 `https://www.nooktalk.top/`。可选在 `.env` 收紧跨域：
+   `CORS_ORIGINS=https://www.nooktalk.top,https://nooktalk.top`
+
+首次 `bootstrap-server.sh` 时若 `deploy/ssl/` 里已有上述两个文件，会自动启用 HTTPS，无需再跑 `install-ssl.sh`。
+
 - 可改环境变量 `APP_DIR`、`REPO_URL`、`NODE_MAJOR` 重跑或换目录/Node 大版本。  
 - 改 `.env`、Nginx 或 `git pull` 后需要重启时，可 `sudo bash /var/www/nooktalk/scripts/restart-nooktalk.sh`（`nginx -t`、重载/启动 Nginx、重启 `nooktalk-api`）。  
 - 如需停服维护，可执行 `sudo bash /var/www/nooktalk/scripts/stop-nooktalk.sh` 一键停止。  

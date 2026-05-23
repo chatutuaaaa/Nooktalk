@@ -136,6 +136,19 @@ function adminPathname() {
   return new URL("admin", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
 }
 
+function sharePathname() {
+  return new URL("share", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function columnsPathname() {
+  return new URL("columns", `${window.location.origin}${import.meta.env.BASE_URL}`).pathname;
+}
+
+function absUrlForPathname(pathname) {
+  if (typeof window === "undefined") return pathname || "/";
+  return `${window.location.origin}${pathname || "/"}`;
+}
+
 function postsDetailIdFromPathname(pathname = window.location.pathname) {
   const base = postsPathname().replace(/\/$/, "");
   const p = String(pathname || "").replace(/\/$/, "");
@@ -156,6 +169,8 @@ function viewFromPathname() {
   if (p === profileReceivedCommentsPathname()) return "profile-comments";
   if (p === profilePathname()) return "profile";
   if (p === adminPathname()) return "admin";
+  if (p === sharePathname()) return "share";
+  if (p === columnsPathname()) return "columns";
   if (p === myPostsPathname()) return "my-posts";
   if (p === postsPathname() || p === postsComposePathname() || postsDetailIdFromPathname(p)) return "posts";
   return "home";
@@ -2124,8 +2139,417 @@ function RecentPostsBoard({ onBackHome, onOpenPost }) {
 const FORUM_CATEGORIES = ["全部", "热门", "技术", "生活", "灵感", "闲聊"];
 const FORUM_TOPIC_TAGS = ["#学习打卡", "#效率工具", "#内容创作", "#Nooktalk设计", "#开发日志"];
 
-function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin }) {
-  const [activeCategory, setActiveCategory] = useState("全部");
+const FEATURED_COLUMNS = [
+  {
+    tag: "技术",
+    title: "技术专栏",
+    desc: "开发笔记、工具链与工程实践",
+    accent: "linear-gradient(145deg, #d8e4ff, #f0f4ff)",
+    glyph: "⚙️",
+  },
+  {
+    tag: "生活",
+    title: "生活专栏",
+    desc: "日常记录、习惯与片刻心情",
+    accent: "linear-gradient(145deg, #f8e0c8, #fff5ea)",
+    glyph: "🌿",
+  },
+  {
+    tag: "灵感",
+    title: "灵感专栏",
+    desc: "创意碎片、阅读摘录与脑洞",
+    accent: "linear-gradient(145deg, #e8d8f8, #f5f0ff)",
+    glyph: "✨",
+  },
+  {
+    tag: "闲聊",
+    title: "闲聊专栏",
+    desc: "轻松话题、随想与站内交流",
+    accent: "linear-gradient(145deg, #c8f0d8, #e8faf0)",
+    glyph: "💬",
+  },
+];
+
+function buildShareSections() {
+  return [
+    {
+      title: "本站",
+      hint: "复制链接发给朋友，或从下方直达子页",
+      items: [
+        {
+          name: "隅言首页",
+          desc: "探索页与 Bento 三栏",
+          url: absUrlForPathname(homePathname()),
+          tone: "site",
+          navTarget: "home",
+        },
+        {
+          name: "帖子广场",
+          desc: "浏览、发帖与讨论",
+          url: absUrlForPathname(postsPathname()),
+          tone: "site",
+          navTarget: "posts",
+        },
+        {
+          name: "最新讨论",
+          desc: "按时间倒序查看新帖",
+          url: absUrlForPathname(recentPathname()),
+          tone: "site",
+          navTarget: "recent",
+        },
+        {
+          name: "精品专栏",
+          desc: "按分类浏览精选内容",
+          url: absUrlForPathname(columnsPathname()),
+          tone: "site",
+          navTarget: "columns",
+        },
+      ],
+    },
+    {
+      title: "开发与学习",
+      items: [
+        {
+          name: "GitHub",
+          desc: "开源项目与代码托管",
+          url: "https://github.com",
+          tone: "github",
+        },
+        {
+          name: "MDN Web Docs",
+          desc: "Web 标准与 API 文档",
+          url: "https://developer.mozilla.org/zh-CN/",
+          tone: "mdn",
+        },
+        {
+          name: "Stack Overflow",
+          desc: "编程问答社区",
+          url: "https://stackoverflow.com",
+          tone: "so",
+        },
+      ],
+    },
+    {
+      title: "内容与社区",
+      items: [
+        {
+          name: "哔哩哔哩",
+          desc: "视频与创作社区",
+          url: "https://www.bilibili.com",
+          tone: "bili",
+        },
+        {
+          name: "少数派",
+          desc: "数字生活与效率工具",
+          url: "https://sspai.com",
+          tone: "sspai",
+        },
+        {
+          name: "小红书",
+          desc: "生活方式分享",
+          url: "https://www.xiaohongshu.com",
+          tone: "xhs",
+        },
+      ],
+    },
+  ];
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
+}
+
+function ShareBoard({ onBackHome, onOpenSitePath }) {
+  const sections = useMemo(() => buildShareSections(), []);
+  const [copyHint, setCopyHint] = useState("");
+  const siteUrl = useMemo(() => absUrlForPathname(homePathname()), []);
+
+  const flashCopyHint = useCallback((msg) => {
+    setCopyHint(msg);
+    window.setTimeout(() => setCopyHint(""), 2200);
+  }, []);
+
+  const handleCopySite = useCallback(async () => {
+    try {
+      await copyTextToClipboard(siteUrl);
+      flashCopyHint("已复制本站链接");
+    } catch {
+      flashCopyHint("复制失败，请手动选择地址栏");
+    }
+  }, [flashCopyHint, siteUrl]);
+
+  const handleNativeShare = useCallback(async () => {
+    if (!navigator.share) {
+      flashCopyHint("当前浏览器不支持系统分享，请使用复制链接");
+      return;
+    }
+    try {
+      await navigator.share({
+        title: "隅言 Nooktalk",
+        text: "来看看这个温柔的小站～",
+        url: siteUrl,
+      });
+    } catch (e) {
+      if (e?.name !== "AbortError") flashCopyHint("分享已取消或失败");
+    }
+  }, [flashCopyHint, siteUrl]);
+
+  const handleCopyLink = useCallback(
+    async (url) => {
+      try {
+        await copyTextToClipboard(url);
+        flashCopyHint("链接已复制");
+      } catch {
+        flashCopyHint("复制失败");
+      }
+    },
+    [flashCopyHint],
+  );
+
+  return (
+    <div className="forum-page share-page" lang="zh-CN">
+      <header className="forum-hero card">
+        <div>
+          <p className="forum-kicker">SHARE</p>
+          <h1 className="forum-title">推荐分享</h1>
+          <p className="forum-sub">收藏常用外链，一键复制或转发隅言给朋友</p>
+        </div>
+        <button type="button" className="forum-back" onClick={onBackHome}>
+          返回首页
+        </button>
+      </header>
+
+      <section className="share-actions card">
+        <div className="share-actions-main">
+          <p className="share-site-url" title={siteUrl}>
+            {siteUrl}
+          </p>
+          <div className="share-actions-btns">
+            <button type="button" className="share-action-btn share-action-btn--primary" onClick={handleCopySite}>
+              复制本站链接
+            </button>
+            <button type="button" className="share-action-btn" onClick={handleNativeShare}>
+              系统分享
+            </button>
+          </div>
+        </div>
+        {copyHint ? (
+          <p className="share-copy-hint" role="status">
+            {copyHint}
+          </p>
+        ) : null}
+      </section>
+
+      {sections.map((section) => (
+        <section key={section.title} className="share-section card">
+          <header className="share-section-head">
+            <h2>{section.title}</h2>
+            {section.hint ? <p>{section.hint}</p> : null}
+          </header>
+          <ul className="share-link-grid">
+            {section.items.map((item) => (
+              <li key={`${section.title}-${item.name}`}>
+                <article className={`share-link-card tone-${item.tone}`}>
+                  <div className="share-link-card-body">
+                    <h3>{item.name}</h3>
+                    <p>{item.desc}</p>
+                    <p className="share-link-url" title={item.url}>
+                      {item.url.replace(/^https?:\/\//, "")}
+                    </p>
+                  </div>
+                  <div className="share-link-card-actions">
+                    {item.tone === "site" ? (
+                      <button
+                        type="button"
+                        className="share-link-btn"
+                        onClick={() => onOpenSitePath?.(item.navTarget || "home")}
+                      >
+                        打开
+                      </button>
+                    ) : (
+                      <a
+                        className="share-link-btn"
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        访问
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="share-link-btn share-link-btn--ghost"
+                      onClick={() => handleCopyLink(item.url)}
+                      aria-label={`复制 ${item.name} 链接`}
+                    >
+                      复制
+                    </button>
+                  </div>
+                </article>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+
+      <section className="card picks-card share-tip-card">
+        <div className="picks-icon" aria-hidden>
+          💡
+        </div>
+        <div className="picks-text">
+          <strong>分享小贴士</strong>
+          <span>长文可拆成章节回复；发帖时加上话题标签，更容易被专栏收录。</span>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ColumnsBoard({ onBackHome, onOpenPost, onOpenColumn }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [columnsData, setColumnsData] = useState(() =>
+    FEATURED_COLUMNS.map((c) => ({ ...c, posts: [] })),
+  );
+
+  const loadColumns = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const results = await Promise.all(
+        FEATURED_COLUMNS.map(async (col) => {
+          const res = await fetch(`/api/posts?tag=${encodeURIComponent(col.tag)}&limit=12`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.detail || "加载失败");
+          let rows = Array.isArray(data?.items) ? data.items : [];
+          rows = rows.filter((p) => !p.deleted);
+          rows.sort((a, b) => {
+            const ap = a.pinned ? 1 : 0;
+            const bp = b.pinned ? 1 : 0;
+            if (bp !== ap) return bp - ap;
+            const hotA =
+              (a.stats?.comments || 0) * 3 + (a.stats?.likes || 0) * 2 + (a.stats?.views || 0);
+            const hotB =
+              (b.stats?.comments || 0) * 3 + (b.stats?.likes || 0) * 2 + (b.stats?.views || 0);
+            if (hotB !== hotA) return hotB - hotA;
+            return Number(b.createdAt || 0) - Number(a.createdAt || 0);
+          });
+          return { ...col, posts: rows.slice(0, 5) };
+        }),
+      );
+      setColumnsData(results);
+    } catch (e) {
+      setColumnsData(FEATURED_COLUMNS.map((c) => ({ ...c, posts: [] })));
+      setError(e instanceof Error ? e.message : "加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadColumns();
+  }, [loadColumns]);
+
+  return (
+    <div className="forum-page columns-page" lang="zh-CN">
+      <header className="forum-hero card">
+        <div>
+          <p className="forum-kicker">COLUMNS</p>
+          <h1 className="forum-title">精品专栏</h1>
+          <p className="forum-sub">按分类聚合优质帖子，置顶优先，热度次之</p>
+        </div>
+        <button type="button" className="forum-back" onClick={onBackHome}>
+          返回首页
+        </button>
+      </header>
+
+      {loading ? <p className="card forum-detail-loading">专栏加载中…</p> : null}
+      {!loading && error ? (
+        <p className="card forum-detail-loading" role="alert">
+          加载失败：{error}
+        </p>
+      ) : null}
+
+      <div className="columns-grid">
+        {columnsData.map((col) => (
+          <section key={col.tag} className="column-card card">
+            <header className="column-card-head" style={{ background: col.accent }}>
+              <span className="column-card-glyph" aria-hidden>
+                {col.glyph}
+              </span>
+              <div>
+                <h2>{col.title}</h2>
+                <p>{col.desc}</p>
+              </div>
+            </header>
+            <div className="column-card-body">
+              {!loading && !col.posts.length ? (
+                <p className="column-empty">该分类暂无帖子，去广场发第一篇吧</p>
+              ) : null}
+              <ol className="column-post-list">
+                {col.posts.map((post, idx) => (
+                  <li key={post.id}>
+                    <button
+                      type="button"
+                      className="column-post-link"
+                      onClick={() => onOpenPost?.(post.id)}
+                    >
+                      <span className="column-post-rank">{idx + 1}</span>
+                      <span className="column-post-title">{post.title}</span>
+                      {post.pinned ? <span className="forum-pinned">置顶</span> : null}
+                    </button>
+                    <p className="column-post-meta">
+                      @{post.author} · {post.stats?.views ?? 0} 浏览 · {post.stats?.likes ?? 0} 赞
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <footer className="column-card-foot">
+              <button type="button" className="column-more-btn" onClick={() => onOpenColumn?.(col.tag)}>
+                进入{col.tag}专栏
+              </button>
+            </footer>
+          </section>
+        ))}
+      </div>
+
+      <section className="card columns-topics">
+        <h3>推荐话题</h3>
+        <p className="columns-topics-hint">发帖时带上这些话题，更容易出现在对应专栏</p>
+        <div className="forum-topics columns-topics-chips">
+          {FORUM_TOPIC_TAGS.map((t) => (
+            <span key={t} className="forum-topic-chip forum-topic-chip--static">
+              {t}
+            </span>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PostsBoard({ onBackHome, authToken, currentUser, onNeedLogin, initialCategory = "全部" }) {
+  const [activeCategory, setActiveCategory] = useState(() => {
+    if (typeof initialCategory === "string" && FORUM_CATEGORIES.includes(initialCategory)) {
+      return initialCategory;
+    }
+    if (typeof window === "undefined") return "全部";
+    const t = window.history.state?.tag;
+    return typeof t === "string" && FORUM_CATEGORIES.includes(t) ? t : "全部";
+  });
   const [posts, setPosts] = useState([]);
   const [hotPosts, setHotPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3164,6 +3588,11 @@ function App() {
   const [activePage, setActivePage] = useState(() =>
     typeof window !== "undefined" ? viewFromPathname() : "home",
   );
+  const [postsCategorySeed, setPostsCategorySeed] = useState(() => {
+    if (typeof window === "undefined") return "全部";
+    const t = window.history.state?.tag;
+    return typeof t === "string" && FORUM_CATEGORIES.includes(t) ? t : "全部";
+  });
 
   const goToPage = useCallback((page) => {
     if (page === "home") {
@@ -3220,12 +3649,40 @@ function App() {
       setActivePage("admin");
       return;
     }
+    if (page === "share") {
+      if (activePage === "share") return;
+      history.pushState({ view: "share" }, "", sharePathname());
+      setActivePage("share");
+      return;
+    }
+    if (page === "columns") {
+      if (activePage === "columns") return;
+      history.pushState({ view: "columns" }, "", columnsPathname());
+      setActivePage("columns");
+      return;
+    }
     if (page === "posts") {
       if (activePage === "posts") return;
-      history.pushState({ view: "posts" }, "", postsPathname());
+      const st = typeof window !== "undefined" ? window.history.state || {} : {};
+      const seed = typeof st.tag === "string" && FORUM_CATEGORIES.includes(st.tag) ? st.tag : "全部";
+      setPostsCategorySeed(seed);
+      history.pushState({ view: "posts", tag: seed === "全部" ? null : seed }, "", postsPathname());
       setActivePage("posts");
     }
   }, [activePage]);
+
+  const goToPostsWithTag = useCallback((tag, postId) => {
+    if (postId) {
+      history.pushState({ view: "posts-detail", postId, from: "columns" }, "", postsDetailPathname(postId));
+      setPostsCategorySeed(FORUM_CATEGORIES.includes(tag) ? tag : "全部");
+      setActivePage("posts");
+      return;
+    }
+    const tagNorm = FORUM_CATEGORIES.includes(tag) ? tag : "全部";
+    setPostsCategorySeed(tagNorm);
+    history.pushState({ view: "posts", tag: tagNorm, from: "columns" }, "", postsPathname());
+    setActivePage("posts");
+  }, []);
 
   useEffect(() => {
     const onPop = () => {
@@ -3505,7 +3962,12 @@ function App() {
                     ? schedulePathname()
                     : item.id === "recent"
                       ? recentPathname()
-                    : "#";
+                      : item.id === "share"
+                        ? sharePathname()
+                        : item.id === "columns"
+                          ? columnsPathname()
+                          : "#";
+              const navigable = ["home", "schedule", "recent", "share", "columns"].includes(item.id);
               return (
                 <li key={item.id}>
                   <a
@@ -3514,7 +3976,7 @@ function App() {
                     }
                     href={href}
                     onClick={(e) => {
-                      if (item.id === "home" || item.id === "schedule" || item.id === "recent") {
+                      if (navigable) {
                         e.preventDefault();
                         goToPage(item.id);
                       } else {
@@ -3595,6 +4057,26 @@ function App() {
               history.pushState({ view: "posts-detail", postId, from: "recent" }, "", postsDetailPathname(postId));
               setActivePage("posts");
             }}
+          />
+        </div>
+      ) : activePage === "share" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--posts">
+          <ShareBoard
+            onBackHome={() => goToPage("home")}
+            onOpenSitePath={(target) => {
+              if (target === "posts") goToPage("posts");
+              else if (target === "recent") goToPage("recent");
+              else if (target === "columns") goToPage("columns");
+              else goToPage("home");
+            }}
+          />
+        </div>
+      ) : activePage === "columns" ? (
+        <div className="col-center col-center--fill col-center--weather col-center--posts">
+          <ColumnsBoard
+            onBackHome={() => goToPage("home")}
+            onOpenPost={(postId) => goToPostsWithTag("全部", postId)}
+            onOpenColumn={(tag) => goToPostsWithTag(tag)}
           />
         </div>
       ) : activePage === "admin" ? (
@@ -3709,6 +4191,8 @@ function App() {
       ) : activePage === "posts" ? (
         <div className="col-center col-center--fill col-center--weather col-center--posts">
           <PostsBoard
+            key={`posts-${postsCategorySeed}`}
+            initialCategory={postsCategorySeed}
             onBackHome={() => goToPage("home")}
             authToken={authToken}
             currentUser={currentUser}

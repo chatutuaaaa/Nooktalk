@@ -32,3 +32,9 @@ __pycache__/
 # Local audio (add files in music/ yourself, not committed)
 music/*
 !music/.gitkeep
+
+# SSL private keys / certs (upload to server only, never commit)
+deploy/ssl/*.pem
+deploy/ssl/*.key
+deploy/ssl/*.crt
+deploy/ssl/*.pfx
